@@ -17,6 +17,7 @@ WORKDIR /src/app
 # Use Corepack/Yarn to install dependencies and build (project uses yarn)
  RUN corepack enable && corepack prepare yarn@1.22.19 --activate
  RUN yarn install --silent --no-progress
+RUN npx browserslist@latest --update-db --silent || true
  ENV NODE_OPTIONS=--openssl-legacy-provider
  RUN yarn build
 
