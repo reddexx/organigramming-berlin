@@ -1,9 +1,9 @@
 # Multi-stage build that clones the repo at build-time (can be overridden with build-args)
-FROM node:18-alpine AS builder
+FROM node:18-bullseye-slim AS builder
 ARG REPO=https://github.com/reddexx/organigramming-berlin.git
 ARG BRANCH=main
 
-RUN apk add --no-cache git
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 
 # Clone the specified repository and branch so the image can be built anywhere
