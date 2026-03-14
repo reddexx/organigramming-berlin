@@ -1,4 +1,8 @@
 import { Row, Navbar, Nav, ButtonGroup, Button } from "react-bootstrap";
+import React, {
+  useState,
+  useEffect,
+  forwardRef,
               <ButtonGroup aria-label="Toolbar">
                 {mode === "viewer" && !isAuthenticated ? (
                   <>
@@ -208,6 +212,7 @@ import { Row, Navbar, Nav, ButtonGroup, Button } from "react-bootstrap";
                   </>
                 )}
               </ButtonGroup>
+                    variant="light"
                     className={
                       "organisation-toolbar-item " +
                       (activeTap === "organisation" ? "active" : "")
@@ -323,20 +328,14 @@ import { Row, Navbar, Nav, ButtonGroup, Button } from "react-bootstrap";
                   </svg>
                 </Button>
 
-                {/* Mode toggle: Admin / Viewer or Login when in viewer and not authenticated */}
-                {!isAuthenticated && mode === "viewer" ? (
-                  <Button variant="light" onClick={() => onRequestLogin()}>
-                    Login
-                  </Button>
-                ) : (
-                  <Button
-                    variant={mode === "admin" ? "outline-primary" : "light"}
-                    title={mode === "admin" ? "Wechsel zu Viewer" : "Wechsel zu Admin"}
-                    onClick={() => setMode(mode === "admin" ? "viewer" : "admin")}
-                  >
-                    {mode === "admin" ? "Admin" : "Viewer"}
-                  </Button>
-                )}
+                {/* Mode toggle: Admin / Viewer */}
+                <Button
+                  variant={mode === "admin" ? "outline-primary" : "light"}
+                  title={mode === "admin" ? "Wechsel zu Viewer" : "Wechsel zu Admin"}
+                  onClick={() => setMode(mode === "admin" ? "viewer" : "admin")}
+                >
+                  {mode === "admin" ? "Admin" : "Viewer"}
+                </Button>
               </ButtonGroup>
             </Nav>
             <Nav>
