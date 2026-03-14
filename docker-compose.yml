@@ -1,12 +1,8 @@
 version: '3.8'
 services:
   organigram:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        REPO: ${REPO:-https://github.com/reddexx/organigramming-berlin.git}
-        BRANCH: ${BRANCH:-main}
+    image: ghcr.io/reddexx/organigramming-berlin:latest
+    pull_policy: always
     ports:
       - "3777:80"
     environment:
