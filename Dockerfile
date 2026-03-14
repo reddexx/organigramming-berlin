@@ -11,7 +11,7 @@ RUN git clone --depth 1 --branch ${BRANCH} ${REPO} .
 
 WORKDIR /src/app
 # Use Corepack/Yarn to install dependencies and build (project uses yarn)
-RUN corepack enable && corepack prepare yarn@stable --activate
+RUN corepack enable && corepack prepare yarn@1.22.19 --activate
 RUN yarn install --silent --no-progress
 RUN yarn build
 
