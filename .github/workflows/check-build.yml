@@ -1,0 +1,32 @@
+name: CI — build check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Install & Build (Yarn v1)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Enable Corepack and prepare Yarn v1
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.19 --activate
+
+      - name: Install dependencies
+        run: yarn install --silent --no-progress
+
+      - name: Build
+        run: yarn build
