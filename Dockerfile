@@ -10,8 +10,10 @@ WORKDIR /src
 RUN git clone --depth 1 --branch ${BRANCH} ${REPO} .
 
 WORKDIR /src/app
-RUN npm ci --silent
-RUN npm run build
+# Use Corepack/Yarn to install dependencies and build (project uses yarn)
+RUN corepack enable && corepack prepare yarn@stable --activate
+RUN yarn install --frozen-lockfile --silent
+RUN yarn build
 
 FROM nginx:stable-alpine
 COPY --from=builder /src/app/build /usr/share/nginx/html
