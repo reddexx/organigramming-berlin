@@ -4,7 +4,8 @@ CONFIG_FILE=/usr/share/nginx/html/env.json
 echo "Writing runtime config to $CONFIG_FILE"
 cat > $CONFIG_FILE <<EOF
 {
-  "mode": "${MODE:-}"
+  "mode": "${MODE:-}",
+  "adminPassword": "${ADMIN_PASSWORD:-}"
 }
 EOF
 

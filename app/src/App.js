@@ -52,6 +52,8 @@ const App = () => {
   const [droppedData, setDroppedData] = useState();
   const [dataURL, setDataURL] = useState(null);
   const [mode, setMode] = useState("admin"); // "admin" or "viewer"
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
 
   const [importError, setImportError] = useState(null);
   const [dataUrlError, setDataUrlError] = useState(null);
@@ -265,8 +267,9 @@ const App = () => {
         const res = await fetch("/env.json", { cache: "no-store" });
         if (!res.ok) return;
         const cfg = await res.json();
-        if (cfg && (cfg.mode === "admin" || cfg.mode === "viewer")) {
-          setMode(cfg.mode);
+        if (cfg) {
+          if (cfg.mode === "admin" || cfg.mode === "viewer") setMode(cfg.mode);
+          if (cfg.adminPassword) setAdminPassword(cfg.adminPassword);
         }
       } catch (e) {
         // ignore - fallback to default
@@ -274,6 +277,9 @@ const App = () => {
     };
     loadRuntimeConfig();
   }, []);
+
+  const login = () => setIsAuthenticated(true);
+  const logout = () => setIsAuthenticated(false);
 
   return (
     <div
@@ -420,8 +426,11 @@ const App = () => {
             ref={controlLayer}
             closeNewDocumentModal={closeNewDocumentModal}
             dataURL={dataURL}
-            mode={mode}
-            setMode={setMode}
+            mode={isAuthenticated ? "admin" : mode}
+            setMode={(m) => setMode(m)}
+            isAuthenticated={isAuthenticated}
+            onRequestLogin={() => setIsAuthenticated(true)}
+            adminPassword={adminPassword}
           />
         </Container>
         <Chart
@@ -429,7 +438,7 @@ const App = () => {
           className="chart-layer"
           data={data}
           sendDataUp={onChange}
-          mode={mode}
+          mode={isAuthenticated ? "admin" : mode}
           setSelected={(e) => {
             setSelected(e);
           }}

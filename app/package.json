@@ -5,6 +5,7 @@
   "main": "index.js",
   "description": "A simple organisation chart app for public service of Berlin",
   "private": true,
+  "packageManager": "yarn@1.22.19",
   "dependencies": {
     "@dabeng/react-orgchart": "^1.0.0",
     "@rjsf/bootstrap-4": "^4.2.3",

@@ -47,6 +47,7 @@ const propTypes = {
   sendDataUp: PropTypes.func,
   onContextMenu: PropTypes.func,
   onCloseContextMenu: PropTypes.func,
+  contentEditable: PropTypes.bool,
   onAddInitNode: PropTypes.func,
 };
 
@@ -60,6 +61,7 @@ const defaultProps = {
   draggable: true,
   collapsible: false,
   multipleSelect: false,
+  contentEditable: true,
 };
 
 const ChartContainer = forwardRef(
@@ -81,6 +83,7 @@ const ChartContainer = forwardRef(
       onContextMenu,
       onCloseContextMenu,
       onOpenDocument,
+      contentEditable,
       onAddInitNode,
     },
     ref
@@ -600,7 +603,7 @@ const ChartContainer = forwardRef(
                 className="paper-size-label"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onOpenDocument(true);
+                  if (contentEditable) onOpenDocument(true);
                 }}
               >
                 {sizeWarning && (
@@ -644,15 +647,17 @@ const ChartContainer = forwardRef(
               {data.document && (
                 <div className="title-container">
                   <div className="cell">
-                    <Button
-                      className="btn-sm btn-edit btn-secondary btn-secondary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenDocument(true);
-                      }}
-                    >
-                      Bearbeiten
-                    </Button>
+                    {contentEditable && (
+                      <Button
+                        className="btn-sm btn-edit btn-secondary btn-secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenDocument(true);
+                        }}
+                      >
+                        Bearbeiten
+                      </Button>
+                    )}
                     {data.document.logo && (
                       <img
                         id="logo"
@@ -692,21 +697,24 @@ const ChartContainer = forwardRef(
                     onContextMenu={onContextMenu}
                     onDragNode={onDragNode}
                     onAddInitNode={onAddInitNode}
+                    contentEditable={contentEditable}
                   />
                 </ul>
               </div>
               {data.document.note && (
                 <div className="note-container">
                   <div className="cell">
-                    <Button
-                      className="btn-sm btn-edit btn-secondary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenDocument(true);
-                      }}
-                    >
-                      Bearbeiten
-                    </Button>
+                    {contentEditable && (
+                      <Button
+                        className="btn-sm btn-edit btn-secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenDocument(true);
+                        }}
+                      >
+                        Bearbeiten
+                      </Button>
+                    )}
                     <MDEditor.Markdown
                       source={data.document.note}
                       rehypePlugins={[[rehypeSanitize,customSchema]]}

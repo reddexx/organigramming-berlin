@@ -31,12 +31,14 @@ const propTypes = {
   onContextMenu: PropTypes.func,
   onDragNode: PropTypes.func,
   onAddInitNode: PropTypes.func,
+  contentEditable: PropTypes.bool,
 };
 
 const defaultProps = {
   draggable: false,
   collapsible: true,
   multipleSelect: true,
+  contentEditable: true,
 };
 
 const ChartNode = forwardRef(
@@ -52,6 +54,7 @@ const ChartNode = forwardRef(
       onDragNode,
       level,
       onAddInitNode,
+      contentEditable,
     },
     ref
   ) => {
@@ -127,7 +130,9 @@ const ChartNode = forwardRef(
       if (onClickNode) {
         onClickNode(ds);
       }
-      selectNodeService.sendSelectedNodeInfo(ds.id);
+      if (contentEditable) {
+        selectNodeService.sendSelectedNodeInfo(ds.id);
+      }
     };
 
     const dragStartHandler = (event) => {

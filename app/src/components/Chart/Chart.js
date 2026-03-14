@@ -188,15 +188,13 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
         update={update}
         collapsible={false}
         // multipleSelect={isMultipleSelect}
-        onClickNode={readSelectedNode}
+        onClickNode={mode === "admin" ? readSelectedNode : () => {}}
         onClickChart={clearSelectedNode}
         sendDataUp={onChanged}
         onAddInitNode={onAddInitNode}
         onContextMenu={onContextMenu}
         onCloseContextMenu={onCloseContextMenu}
-        onOpenDocument={(e) => {
-          setSelected("document");
-        }}
+        onOpenDocument={mode === "admin" ? (() => setSelected("document")) : (() => {})}
         pan={true}
         zoom={true}
         draggable={mode === "admin"}
