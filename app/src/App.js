@@ -51,6 +51,7 @@ const App = () => {
   const [tempData, setTempData] = useState();
   const [droppedData, setDroppedData] = useState();
   const [dataURL, setDataURL] = useState(null);
+  const [mode, setMode] = useState("admin"); // "admin" or "viewer"
 
   const [importError, setImportError] = useState(null);
   const [dataUrlError, setDataUrlError] = useState(null);
@@ -402,6 +403,8 @@ const App = () => {
             ref={controlLayer}
             closeNewDocumentModal={closeNewDocumentModal}
             dataURL={dataURL}
+            mode={mode}
+            setMode={setMode}
           />
         </Container>
         <Chart
@@ -409,6 +412,7 @@ const App = () => {
           className="chart-layer"
           data={data}
           sendDataUp={onChange}
+          mode={mode}
           setSelected={(e) => {
             setSelected(e);
           }}

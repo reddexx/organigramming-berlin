@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  organigram:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        REPO: ${REPO:-https://github.com/reddexx/organigramming-berlin.git}
+        BRANCH: ${BRANCH:-main}
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped

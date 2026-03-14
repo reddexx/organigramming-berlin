@@ -45,6 +45,24 @@ It correctly bundles React in production mode and optimizes the build for the be
 The build is minified and the filenames include the hashes.\
 Your app is ready to be deployed!
 
+## Docker image (CI-built)
+
+A GitHub Actions workflow is provided to build and publish a Docker image to the GitHub Container Registry (GHCR) on pushes to `main`.
+
+Pull and run the latest image on a test server with:
+
+```bash
+docker pull ghcr.io/reddexx/organigramming-berlin:latest
+docker run -d -p 3000:80 ghcr.io/reddexx/organigramming-berlin:latest
+```
+
+Notes:
+- If the package is not public you must authenticate on the server before pulling:
+  ```bash
+  echo $PERSONAL_ACCESS_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+  ```
+
+
 <!-- ## Changelog (added, fixed, changed)
 
 - 12.03.2022 - Added: simple changelog
