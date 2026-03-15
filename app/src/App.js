@@ -51,7 +51,7 @@ const App = () => {
   const [tempData, setTempData] = useState();
   const [droppedData, setDroppedData] = useState();
   const [dataURL, setDataURL] = useState(null);
-  const [mode, setMode] = useState("admin"); // "admin" or "viewer"
+  const [mode, setMode] = useState("viewer"); // "admin" or "viewer"
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
 
