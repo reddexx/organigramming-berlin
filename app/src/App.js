@@ -8,6 +8,7 @@ import useUndo from "use-undo";
 import { fromEvent } from "file-selector";
 
 import AlertModal from "./components/Sidebar/AlertModal";
+import AuthModal from "./components/Sidebar/AuthModal";
 import Chart from "./components/Chart/Chart";
 import Sidebar from "./components/Sidebar/Sidebar";
 import initDocument from "./data/initDocument";
@@ -52,7 +53,10 @@ const App = () => {
   const [droppedData, setDroppedData] = useState();
   const [dataURL, setDataURL] = useState(null);
   const [mode, setMode] = useState("viewer"); // "admin" or "viewer"
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => localStorage.getItem("isAuthenticated") === "1"
+  );
+  const [authModalShow, setAuthModalShow] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
 
   const [importError, setImportError] = useState(null);
@@ -278,8 +282,51 @@ const App = () => {
     loadRuntimeConfig();
   }, []);
 
-  const login = () => setIsAuthenticated(true);
-  const logout = () => setIsAuthenticated(false);
+  const login = () => {
+    setIsAuthenticated(true);
+    localStorage.setItem("isAuthenticated", "1");
+    setAuthModalShow(false);
+  };
+  const logout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem("isAuthenticated");
+  };
+
+  const showLoginModal = () => setAuthModalShow(true);
+
+  const getSharedCharts = () => {
+    try {
+      const raw = localStorage.getItem("sharedOrgCharts");
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const publishCurrentChart = (meta = {}) => {
+    // Save current `data` for other users to load
+    const list = getSharedCharts();
+    const id = Date.now().toString();
+    const title = data?.document?.title || "Untitled";
+    const payload = {
+      id,
+      title,
+      timestamp: new Date().toISOString(),
+      meta,
+      data,
+    };
+    list.unshift(payload);
+    localStorage.setItem("sharedOrgCharts", JSON.stringify(list));
+    return payload;
+  };
+
+  const loadSharedChart = (id) => {
+    const list = getSharedCharts();
+    const item = list.find((s) => s.id === id);
+    if (item && item.data) {
+      onChange(item.data);
+    }
+  };
 
   return (
     <div
@@ -429,7 +476,16 @@ const App = () => {
             mode={isAuthenticated ? "admin" : mode}
             setMode={(m) => setMode(m)}
             isAuthenticated={isAuthenticated}
-            onRequestLogin={() => setIsAuthenticated(true)}
+            onRequestLogin={showLoginModal}
+            onPublish={publishCurrentChart}
+            sharedCharts={getSharedCharts()}
+            onLoadSharedChart={loadSharedChart}
+            adminPassword={adminPassword}
+          />
+          <AuthModal
+            show={authModalShow}
+            onHide={() => setAuthModalShow(false)}
+            onLogin={login}
             adminPassword={adminPassword}
           />
         </Container>

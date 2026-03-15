@@ -1,4 +1,4 @@
-import { Row, Navbar, Nav, ButtonGroup, Button } from "react-bootstrap";
+import { Row, Navbar, Nav, ButtonGroup, Button, Dropdown } from "react-bootstrap";
 import React, {
   useState,
   useEffect,
@@ -36,6 +36,9 @@ const Sidebar = forwardRef(
       mode,
       isAuthenticated,
       onRequestLogin,
+      onPublish,
+      sharedCharts = [],
+      onLoadSharedChart,
     },
     ref
   ) => {
@@ -343,6 +346,36 @@ const Sidebar = forwardRef(
               </ButtonGroup>
             </Nav>
             <Nav>
+              <Dropdown className="me-2">
+                <Dropdown.Toggle variant="light" id="shared-dropdown">
+                  Organigramme
+                </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  {sharedCharts.length === 0 && (
+                    <Dropdown.Item disabled>Keine vorhanden</Dropdown.Item>
+                  )}
+                  {sharedCharts.map((s) => (
+                    <Dropdown.Item
+                      key={s.id}
+                      onClick={() => onLoadSharedChart && onLoadSharedChart(s.id)}
+                    >
+                      {s.title} <small className="text-muted">{s.timestamp ? new Date(s.timestamp).toLocaleString() : ''}</small>
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown.Menu>
+              </Dropdown>
+              {isAuthenticated && onPublish && (
+                <Button
+                  variant="light"
+                  title="Veröffentlichen"
+                  onClick={() => onPublish()}
+                  className="me-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-save" viewBox="0 0 16 16">
+                    <path d="M8 0L3 5v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V3l-5-3z"/>
+                  </svg>
+                </Button>
+              )}
               <ButtonGroup className="undo-redo-group">
                 <Button
                   onClick={onUndo}
