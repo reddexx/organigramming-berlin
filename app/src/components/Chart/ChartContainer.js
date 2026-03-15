@@ -99,6 +99,9 @@ const ChartContainer = forwardRef(
     const [chartTransform, setChartTransform] = useState("");
     const [enablePan, setEnablePan] = useState(true);
     const [panning, setPanning] = useState(false);
+    const [potentialPan, setPotentialPan] = useState(false);
+    const [potentialStartX, setPotentialStartX] = useState(0);
+    const [potentialStartY, setPotentialStartY] = useState(0);
     const [dragging, setDragging] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [sizeWarning, setSizeWarning] = useState(false);
@@ -162,22 +165,49 @@ const ChartContainer = forwardRef(
 
     const panEndHandler = () => {
       setPanning(false);
+      setPotentialPan(false);
     };
 
     const panHandler = (e) => {
+      // support touch and mouse
+      let pageX = 0;
+      let pageY = 0;
+      if (!e.targetTouches) {
+        pageX = e.pageX;
+        pageY = e.pageY;
+      } else if (e.targetTouches.length === 1) {
+        pageX = e.targetTouches[0].pageX;
+        pageY = e.targetTouches[0].pageY;
+      } else if (e.targetTouches && e.targetTouches.length > 1) {
+        return;
+      }
+
+      // If we only have a potential pan (mouse pressed but not moved enough), check threshold
+      if (!panning && potentialPan) {
+        const dx = Math.abs(pageX - potentialStartX);
+        const dy = Math.abs(pageY - potentialStartY);
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 5) {
+          // do not start panning yet
+          return;
+        }
+        // start panning now
+        setPanning(true);
+        setPotentialPan(false);
+      }
+
+      if (!panning) return;
+
       let newX = 0;
       let newY = 0;
       if (!e.targetTouches) {
-        // pand on desktop
-        newX = e.pageX - startX;
-        newY = e.pageY - startY;
-      } else if (e.targetTouches.length === 1) {
-        // pan on mobile device
-        newX = e.targetTouches[0].pageX - startX;
-        newY = e.targetTouches[0].pageY - startY;
-      } else if (e.targetTouches.length > 1) {
-        return;
+        newX = pageX - startX;
+        newY = pageY - startY;
+      } else {
+        newX = pageX - startX;
+        newY = pageY - startY;
       }
+
       if (transform === "") {
         if (transform.indexOf("3d") === -1) {
           setTransform("matrix(1,0,0,1," + newX + "," + newY + ")");
@@ -203,10 +233,10 @@ const ChartContainer = forwardRef(
       onCloseContextMenu();
       if (e.target.closest(".oc-node")) {
         setPanning(false);
+        setPotentialPan(false);
         return;
-      } else {
-        setPanning(true);
       }
+
       let lastX = 0;
       let lastY = 0;
       if (transform !== "") {
@@ -219,17 +249,18 @@ const ChartContainer = forwardRef(
           lastY = parseInt(matrix[13]);
         }
       }
+
+      // mark potential pan; actual panning will start after small mouse movement
       if (!e.targetTouches) {
-        // pand on desktop
-        setStartX(e.pageX - lastX);
-        setStartY(e.pageY - lastY);
+        setPotentialStartX(e.pageX);
+        setPotentialStartY(e.pageY);
       } else if (e.targetTouches.length === 1) {
-        // pan on mobile device
-        setStartX(e.targetTouches[0].pageX - lastX);
-        setStartY(e.targetTouches[0].pageY - lastY);
-      } else if (e.targetTouches.length > 1) {
-        return;
+        setPotentialStartX(e.targetTouches[0].pageX);
+        setPotentialStartY(e.targetTouches[0].pageY);
       }
+      setStartX(lastX ? (e.pageX ? e.pageX - lastX : 0) : 0);
+      setStartY(lastY ? (e.pageY ? e.pageY - lastY : 0) : 0);
+      setPotentialPan(true);
     };
 
     const updateViewScale = (newScale) => {
