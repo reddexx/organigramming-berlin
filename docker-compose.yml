@@ -7,4 +7,6 @@ services:
       - "3777:80"
     environment:
       - NODE_ENV=production
+      - MODE=viewer
+      - ADMIN_PASSWORD=changeme
     restart: unless-stopped

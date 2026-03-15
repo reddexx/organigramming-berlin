@@ -192,17 +192,11 @@ const ChartNode = forwardRef(
                 : " has-child"
               : " end-node")
           }
-          draggable={
-            ds.layout?.style !== "root"
-              ? draggable
-                ? "true"
-                : undefined
-              : undefined
-          }
+          draggable={ds.layout?.style !== "root" && draggable ? true : false}
           onClick={ds.layout?.style !== "root" ? clickNodeHandler : null}
-          onDragStart={ds.layout?.style !== "root" ? dragStartHandler : null}
+          onDragStart={ds.layout?.style !== "root" && draggable ? dragStartHandler : null}
           onDragOver={dragOverHandler}
-          onDragEnd={dragendHandler}
+          onDragEnd={draggable ? dragendHandler : null}
           onDrop={dropHandler}
           onContextMenu={
             ds.layout?.style !== "root" ? contextMenuHandler : null
