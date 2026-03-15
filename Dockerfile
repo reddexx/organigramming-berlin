@@ -21,12 +21,20 @@ RUN npx browserslist@latest --update-db --silent || true
  ENV NODE_OPTIONS=--openssl-legacy-provider
  RUN yarn build
 
-FROM nginx:stable-alpine
-COPY --from=builder /src/app/build /usr/share/nginx/html
+FROM node:18-alpine
+WORKDIR /app
 
-# Custom nginx config to allow embedding in iframes and serve SPA fallback
-RUN rm /etc/nginx/conf.d/default.conf
-COPY nginx-default.conf /etc/nginx/conf.d/default.conf
+# copy built SPA
+COPY --from=builder /src/app/build ./app/build
+
+# copy server
+COPY server ./server
+
+WORKDIR /app/server
+# install only server deps
+RUN npm install --production --silent
+
+# copy entrypoint
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 

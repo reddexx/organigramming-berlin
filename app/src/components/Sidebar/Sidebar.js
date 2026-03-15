@@ -39,6 +39,7 @@ const Sidebar = forwardRef(
       onPublish,
       sharedCharts = [],
       onLoadSharedChart,
+      logout,
     },
     ref
   ) => {
@@ -365,15 +366,13 @@ const Sidebar = forwardRef(
                 </Dropdown.Menu>
               </Dropdown>
               {isAuthenticated && onPublish && (
-                <Button
-                  variant="light"
-                  title="Veröffentlichen"
-                  onClick={() => onPublish()}
-                  className="me-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-save" viewBox="0 0 16 16">
-                    <path d="M8 0L3 5v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V3l-5-3z"/>
-                  </svg>
+                <Button variant="light" title="Speichern" onClick={() => onPublish()} className="me-2">
+                  Speichern
+                </Button>
+              )}
+              {isAuthenticated && typeof logout === 'function' && (
+                <Button variant="light" title="Abmelden" onClick={() => logout()} className="me-2">
+                  Abmelden
                 </Button>
               )}
               <ButtonGroup className="undo-redo-group">

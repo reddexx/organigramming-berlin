@@ -58,6 +58,7 @@ const App = () => {
   );
   const [authModalShow, setAuthModalShow] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
+  const [sharedCharts, setSharedCharts] = useState([]);
 
   const [importError, setImportError] = useState(null);
   const [dataUrlError, setDataUrlError] = useState(null);
@@ -295,38 +296,51 @@ const App = () => {
   const showLoginModal = () => setAuthModalShow(true);
 
   const getSharedCharts = () => {
-    try {
-      const raw = localStorage.getItem("sharedOrgCharts");
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      return [];
-    }
+    return sharedCharts;
   };
 
   const publishCurrentChart = (meta = {}) => {
-    // Save current `data` for other users to load
-    const list = getSharedCharts();
-    const id = Date.now().toString();
     const title = data?.document?.title || "Untitled";
-    const payload = {
-      id,
-      title,
-      timestamp: new Date().toISOString(),
-      meta,
-      data,
-    };
-    list.unshift(payload);
-    localStorage.setItem("sharedOrgCharts", JSON.stringify(list));
-    return payload;
+    const payload = { title, meta, data };
+    return fetch('/api/charts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => res.json())
+      .then((saved) => {
+        setSharedCharts((prev) => [saved, ...(prev || [])]);
+        return saved;
+      })
+      .catch((e) => {
+        console.error('publish failed', e);
+        return null;
+      });
   };
 
   const loadSharedChart = (id) => {
-    const list = getSharedCharts();
-    const item = list.find((s) => s.id === id);
+    const item = sharedCharts.find((s) => s.id === id);
     if (item && item.data) {
       onChange(item.data);
+    } else {
+      // fallback - reload from server
+      fetch('/api/charts')
+        .then((r) => r.json())
+        .then((list) => {
+          setSharedCharts(list || []);
+          const it = (list || []).find((s) => s.id === id);
+          if (it && it.data) onChange(it.data);
+        });
     }
   };
+
+  useEffect(() => {
+    // load shared charts from server
+    fetch('/api/charts')
+      .then((r) => r.json())
+      .then((list) => setSharedCharts(list || []))
+      .catch(() => setSharedCharts([]));
+  }, []);
 
   return (
     <div
@@ -478,8 +492,9 @@ const App = () => {
             isAuthenticated={isAuthenticated}
             onRequestLogin={showLoginModal}
             onPublish={publishCurrentChart}
-            sharedCharts={getSharedCharts()}
+            sharedCharts={sharedCharts}
             onLoadSharedChart={loadSharedChart}
+            logout={logout}
             adminPassword={adminPassword}
           />
           <AuthModal

@@ -1,12 +1,14 @@
 version: '3.8'
 services:
   organigram:
-    image: ghcr.io/reddexx/organigramming-berlin:latest
-    pull_policy: always
+    build: .
     ports:
       - "3777:80"
     environment:
       - NODE_ENV=production
       - MODE=viewer
       - ADMIN_PASSWORD=changeme
+      - DATA_DIR=/data
+    volumes:
+      - ./data:/data
     restart: unless-stopped
