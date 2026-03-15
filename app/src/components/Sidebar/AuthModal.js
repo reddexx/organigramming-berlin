@@ -6,11 +6,13 @@ const AuthModal = ({ show, onHide, onLogin, adminPassword }) => {
   const [error, setError] = useState(null);
 
   const submit = () => {
-    if (!adminPassword) {
+    const expected = adminPassword ? String(adminPassword).trim() : "";
+    const attempt = password ? String(password).trim() : "";
+    if (!expected) {
       setError("Kein Passwort gesetzt");
       return;
     }
-    if (password === adminPassword) {
+    if (attempt === expected) {
       setError(null);
       onLogin();
       onHide();
