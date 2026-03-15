@@ -249,6 +249,11 @@ const ChartNode = forwardRef(
             </div>
             {(ds.departments || ds.positions || ds.contact || ds.address) && (
               <div className="oc-content">
+                {ds.avatar && (
+                  <div className="oc-avatar">
+                    <img src={ds.avatar} alt="avatar" />
+                  </div>
+                )}
                 {ds.positions && ds.layout?.grid === "grid2" && (
                   <div className="grid-container">
                     <ChartNodePositions

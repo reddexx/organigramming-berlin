@@ -12,6 +12,9 @@ const SHARED_FILE = path.join(DATA_DIR, 'shared-charts.json');
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
+// Serve data directory (images, saved charts) under /data
+app.use('/data', express.static(DATA_DIR));
+
 // Serve env.json from build folder if present (written by entrypoint), otherwise expose basic env
 app.get('/env.json', async (req, res) => {
   try {
@@ -57,6 +60,36 @@ app.post('/api/charts', async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'failed to save' });
+  }
+});
+
+// Upload image (base64 data URL) to DATA_DIR/image and return public path
+app.post('/api/upload-image', async (req, res) => {
+  try {
+    const { filename, data } = req.body;
+    if (!data) return res.status(400).json({ error: 'missing data' });
+    const dir = path.join(DATA_DIR, 'image');
+    await fs.mkdir(dir, { recursive: true });
+
+    // data is expected as data:<mime>;name=<name>;base64,<base64string>
+    const matches = data.match(/^data:(.+);base64,(.*)$/);
+    let buffer;
+    if (matches) {
+      buffer = Buffer.from(matches[2], 'base64');
+    } else {
+      // fallback: raw base64
+      buffer = Buffer.from(data, 'base64');
+    }
+
+    const safeName = filename || Date.now().toString();
+    const outPath = path.join(dir, safeName);
+    await fs.writeFile(outPath, buffer);
+
+    // return URL path where the image is served
+    res.status(201).json({ url: `/data/image/${safeName}` });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'failed to upload' });
   }
 });
 

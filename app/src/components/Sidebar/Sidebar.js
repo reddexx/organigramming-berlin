@@ -347,7 +347,7 @@ const Sidebar = forwardRef(
               </ButtonGroup>
             </Nav>
             <Nav>
-              <Dropdown className="me-2">
+                    <Dropdown className="me-2">
                 <Dropdown.Toggle variant="light" id="shared-dropdown">
                   Organigramme
                 </Dropdown.Toggle>
@@ -375,6 +375,7 @@ const Sidebar = forwardRef(
                   Abmelden
                 </Button>
               )}
+              {/* pass sharedCharts to OrganisationTab via props earlier */}
               <ButtonGroup className="undo-redo-group">
                 <Button
                   onClick={onUndo}
@@ -440,6 +441,7 @@ const Sidebar = forwardRef(
                 selected={selected}
                 // ref={organisationTabRef}
                 setSelected={(e) => setSelected(e)}
+                sharedCharts={sharedCharts}
               />
             )}
           </div>

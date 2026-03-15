@@ -510,6 +510,7 @@ const App = () => {
           data={data}
           sendDataUp={onChange}
           mode={isAuthenticated ? "admin" : mode}
+          onOpenLinkedChart={loadSharedChart}
           setSelected={(e) => {
             setSelected(e);
           }}

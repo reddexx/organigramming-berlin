@@ -11,7 +11,7 @@ import JSONDigger from "../../services/jsonDigger";
 import { v4 as uuidv4 } from "uuid";
 import getURI from "../../services/getURI";
 
-const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin" }, ref) => {
+const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin", onOpenLinkedChart }, ref) => {
   const orgchart = useRef();
 
   useImperativeHandle(ref, () => ({
@@ -188,7 +188,15 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
         update={update}
         collapsible={false}
         // multipleSelect={isMultipleSelect}
-        onClickNode={mode === "admin" ? readSelectedNode : () => {}}
+        onClickNode={(nodeData) => {
+          if (mode === "admin") {
+            readSelectedNode(nodeData);
+          } else {
+            if (nodeData && nodeData.linkedChartId && typeof onOpenLinkedChart === 'function') {
+              onOpenLinkedChart(nodeData.linkedChartId);
+            }
+          }
+        }}
         onClickChart={clearSelectedNode}
         sendDataUp={onChanged}
         onAddInitNode={onAddInitNode}

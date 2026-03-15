@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import FileSelect from "../From/FileSelect";
 import { Button, Stack } from "react-bootstrap";
 import Form from "@rjsf/bootstrap-4";
 import { v4 as uuidv4 } from "uuid";
@@ -18,7 +19,7 @@ import { checkErrors } from "../../services/checkErrors";
 import { getDefinitions } from "../../services/getDefinitions";
 const definitions = getDefinitions();
 
-const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger }) => {
+const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCharts = [] }) => {
   const [formData, setFormData] = useState({ current: selected });
   const [idPrefix, setIdPrefix] = useState("root");
   const [removeNodeAlertModalShow, setRemoveNodeAlertModalShow] =
@@ -31,6 +32,13 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger }) => {
       current: {
         $ref: "#/definitions/organisation",
       },
+      // linked chart id and avatar stored here
+      "current.linkedChartId": {
+        type: "string",
+      },
+      "current.avatar": {
+        type: "string",
+      },
     },
   };
 
@@ -40,6 +48,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger }) => {
     UriSearch: UriSearch,
     MainOrganisation: MainOrganisation,
     CustomDropdown: CustomDropdown,
+    FileSelect: FileSelect,
   };
 
   const schema = { ...definitions, ...properties };
@@ -132,6 +141,13 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger }) => {
         "ui:headless": true,
         "ui:widget": "hidden",
       },
+      linkedChartId: {
+        "ui:widget": "hidden",
+      },
+      avatar: {
+        "ui:widget": FileSelect,
+        preuploads: [],
+      },
       departments: {
         items: {
           "ui:headless": true,
@@ -191,6 +207,36 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger }) => {
     }
   }, [selected]);
 
+  // handle selecting a linked shared chart (outside of rjsf form)
+  const handleLinkedChartChange = (e) => {
+    const id = e.target.value || null;
+    const updated = { ...formData.current, linkedChartId: id };
+    setFormData({ current: updated });
+    handleSendDataUp(updated);
+  };
+
+  // handle avatar upload: the FileSelect widget will return base64 string
+  // we upload to server and replace value with public URL
+  const handleAvatarUpload = async (base64) => {
+    if (!base64) return;
+    try {
+      const filename = (formData.current && formData.current.id ? formData.current.id : Date.now()) + '.png';
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename, data: base64 }),
+      });
+      const json = await res.json();
+      if (json && json.url) {
+        const updated = { ...formData.current, avatar: json.url };
+        setFormData({ current: updated });
+        handleSendDataUp(updated);
+      }
+    } catch (e) {
+      console.error('avatar upload failed', e);
+    }
+  };
+
   const handleSendDataUp = async (data) => {
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
@@ -211,6 +257,16 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger }) => {
     }
 
     setFormData({ ...e.formData });
+    // if avatar changed as base64, upload it
+    if (e.formData.current && e.formData.current.avatar && e.formData.current.avatar.indexOf('base64') !== -1) {
+      handleAvatarUpload(e.formData.current.avatar);
+      // do not send base64 contents up
+      const tmp = { ...e.formData.current };
+      delete tmp.avatar;
+      handleSendDataUp({ ...tmp });
+      return;
+    }
+
     handleSendDataUp({ ...e.formData.current });
   };
 
@@ -254,6 +310,15 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger }) => {
 
   return (
     <div className="tab" id="organisation-tab">
+      <div className="mb-3">
+        <label className="form-label">Unterkategorisierende Organisation (verknüpftes Organigram)</label>
+        <select className="form-select" value={formData.current?.linkedChartId || ""} onChange={handleLinkedChartChange}>
+          <option value="">Keine</option>
+          {sharedCharts.map((s) => (
+            <option key={s.id} value={s.id}>{s.title}</option>
+          ))}
+        </select>
+      </div>
       <AlertModal
         onOkay={removeNode}
         show={removeNodeAlertModalShow}
