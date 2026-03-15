@@ -27,17 +27,29 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   // const dsDigger = new JSONDigger(data, "id", "organisations");
   const timerRef = useRef(null);
 
+  // build schema properties; include linkedChartId enum from sharedCharts
+  const linkedEnum = [""];
+  const linkedEnumNames = ["Keine"];
+  (sharedCharts || []).forEach((s) => {
+    linkedEnum.push(s.id);
+    linkedEnumNames.push(s.title || s.id);
+  });
+
   const properties = {
     properties: {
       current: {
         $ref: "#/definitions/organisation",
       },
       // linked chart id and avatar stored here
-      "current.linkedChartId": {
+      linkedChartId: {
         type: "string",
+        title: "Unterkategorisierende Organisation (verknüpftes Organigram)",
+        enum: linkedEnum,
+        enumNames: linkedEnumNames,
       },
-      "current.avatar": {
+      avatar: {
         type: "string",
+        title: "Avatar",
       },
     },
   };
@@ -142,11 +154,13 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         "ui:widget": "hidden",
       },
       linkedChartId: {
-        "ui:widget": "hidden",
+        "ui:placeholder": "Auswählen...",
       },
       avatar: {
-        "ui:widget": FileSelect,
-        preuploads: [],
+        "ui:widget": "FileSelect",
+        "ui:options": {
+          preuploads: [],
+        },
       },
       departments: {
         items: {
