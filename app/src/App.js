@@ -59,6 +59,7 @@ const App = () => {
   const [authModalShow, setAuthModalShow] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [sharedCharts, setSharedCharts] = useState([]);
+  const [currentSharedChartId, setCurrentSharedChartId] = useState(null);
 
   const [importError, setImportError] = useState(null);
   const [dataUrlError, setDataUrlError] = useState(null);
@@ -301,7 +302,12 @@ const App = () => {
 
   const publishCurrentChart = (meta = {}) => {
     const title = data?.document?.title || "Untitled";
-    const payload = { title, meta, data };
+    const payload = {
+      title,
+      meta,
+      data,
+      isMainChart: data?.document?.isMainOrganisation === true,
+    };
     return fetch('/api/charts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -310,6 +316,7 @@ const App = () => {
       .then((res) => res.json())
       .then((saved) => {
         setSharedCharts((prev) => [saved, ...(prev || [])]);
+        setCurrentSharedChartId(saved.id);
         return saved;
       })
       .catch((e) => {
@@ -322,6 +329,7 @@ const App = () => {
     const item = sharedCharts.find((s) => s.id === id);
     if (item && item.data) {
       onChange(item.data);
+      setCurrentSharedChartId(item.id);
     } else {
       // fallback - reload from server
       fetch('/api/charts')
@@ -330,6 +338,7 @@ const App = () => {
           setSharedCharts(list || []);
           const it = (list || []).find((s) => s.id === id);
           if (it && it.data) onChange(it.data);
+          if (it) setCurrentSharedChartId(it.id);
         });
     }
   };
@@ -338,9 +347,46 @@ const App = () => {
     // load shared charts from server
     fetch('/api/charts')
       .then((r) => r.json())
-      .then((list) => setSharedCharts(list || []))
+      .then((list) => {
+        const charts = list || [];
+        setSharedCharts(charts);
+        const main = charts.find((s) => s.isMainChart || (s.data && s.data.document && s.data.document.isMainOrganisation));
+        if (main && main.data) {
+          onChange(main.data);
+          setCurrentSharedChartId(main.id);
+        }
+      })
       .catch(() => setSharedCharts([]));
   }, []);
+
+  const deleteSharedChart = (id) => {
+    if (!id) return Promise.resolve(null);
+    return fetch(`/api/charts/${id}`, { method: 'DELETE' })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.message || 'Delete failed');
+        }
+        setSharedCharts((prev) => {
+          const remaining = (prev || []).filter((s) => s.id !== id);
+          if (currentSharedChartId === id) {
+            if (remaining.length > 0) {
+              onChange(remaining[0].data);
+              setCurrentSharedChartId(remaining[0].id);
+            } else {
+              setData(initDocument);
+              setCurrentSharedChartId(null);
+            }
+          }
+          return remaining;
+        });
+        return true;
+      })
+      .catch((e) => {
+        console.error('delete failed', e);
+        throw e;
+      });
+  };
 
   return (
     <div
@@ -494,6 +540,8 @@ const App = () => {
             onPublish={publishCurrentChart}
             sharedCharts={sharedCharts}
             onLoadSharedChart={loadSharedChart}
+            currentSharedChartId={currentSharedChartId}
+            onDeleteSharedChart={deleteSharedChart}
             logout={logout}
             adminPassword={adminPassword}
           />

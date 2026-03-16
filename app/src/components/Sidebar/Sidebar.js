@@ -40,6 +40,8 @@ const Sidebar = forwardRef(
       sharedCharts = [],
       onLoadSharedChart,
       logout,
+      currentSharedChartId,
+      onDeleteSharedChart,
     },
     ref
   ) => {
@@ -368,6 +370,23 @@ const Sidebar = forwardRef(
               {isAuthenticated && onPublish && (
                 <Button variant="light" title="Speichern" onClick={() => onPublish()} className="me-2">
                   Speichern
+                </Button>
+              )}
+              {isAuthenticated && currentSharedChartId && onDeleteSharedChart && (
+                <Button
+                  variant="light"
+                  title="Organigramm löschen"
+                  onClick={() => {
+                    if (window.confirm('Möchten Sie dieses Organigramm wirklich löschen?')) {
+                      onDeleteSharedChart(currentSharedChartId).catch((e) => {
+                        const msg = e?.message || 'Löschen fehlgeschlagen';
+                        alert(msg);
+                      });
+                    }
+                  }}
+                  className="me-2"
+                >
+                  Löschen
                 </Button>
               )}
               {isAuthenticated && typeof logout === 'function' && (

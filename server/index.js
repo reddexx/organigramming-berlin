@@ -54,12 +54,34 @@ app.post('/api/charts', async (req, res) => {
     // simple id if not present
     if (!payload.id) payload.id = Date.now().toString();
     payload.timestamp = new Date().toISOString();
+    // if payload requests to be main chart, unset others
+    if (payload.isMainChart) {
+      list = list.map((c) => ({ ...c, isMainChart: false }));
+    }
     list.unshift(payload);
     await fs.writeFile(SHARED_FILE, JSON.stringify(list, null, 2), 'utf8');
     res.status(201).json(payload);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'failed to save' });
+  }
+});
+
+app.delete('/api/charts/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const raw = await fs.readFile(SHARED_FILE, 'utf8');
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return res.status(400).json({ error: 'invalid list' });
+    if (list.length <= 1) {
+      return res.status(400).json({ error: 'Konnte nicht gelöscht werden, da es das letzte Organigramm ist' });
+    }
+    const filtered = list.filter((c) => c.id !== id);
+    await fs.writeFile(SHARED_FILE, JSON.stringify(filtered, null, 2), 'utf8');
+    res.status(200).json({ success: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'failed to delete' });
   }
 });
 
