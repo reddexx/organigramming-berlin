@@ -27,32 +27,13 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   // const dsDigger = new JSONDigger(data, "id", "organisations");
   const timerRef = useRef(null);
 
-  // build schema properties; include linkedChartId enum from sharedCharts
+  // build schema dynamic enum values for linkedChartId
   const linkedEnum = [""];
   const linkedEnumNames = ["Keine"];
   (sharedCharts || []).forEach((s) => {
     linkedEnum.push(s.id);
     linkedEnumNames.push(s.title || s.id);
   });
-
-  const properties = {
-    properties: {
-      current: {
-        $ref: "#/definitions/organisation",
-      },
-      // linked chart id and avatar stored here
-      linkedChartId: {
-        type: "string",
-        title: "Unterkategorisierende Organisation (verknüpftes Organigram)",
-        enum: linkedEnum,
-        enumNames: linkedEnumNames,
-      },
-      avatar: {
-        type: "string",
-        title: "Avatar",
-      },
-    },
-  };
 
   const fields = {
     CollapsibleField: CollapsibleField,
@@ -63,7 +44,18 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     FileSelect: FileSelect,
   };
 
-  const schema = { ...definitions, ...properties };
+  const schema = { ...definitions };
+  // inject dynamic enum values into organisation definition
+  if (
+    schema.definitions &&
+    schema.definitions.organisation &&
+    schema.definitions.organisation.properties
+  ) {
+    schema.definitions.organisation.properties.linkedChartId =
+      schema.definitions.organisation.properties.linkedChartId || {};
+    schema.definitions.organisation.properties.linkedChartId.enum = linkedEnum;
+    schema.definitions.organisation.properties.linkedChartId.enumNames = linkedEnumNames;
+  }
   const uiSchema = {
     "ui:headless": true,
     current: {
@@ -221,13 +213,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     }
   }, [selected]);
 
-  // handle selecting a linked shared chart (outside of rjsf form)
-  const handleLinkedChartChange = (e) => {
-    const id = e.target.value || null;
-    const updated = { ...formData.current, linkedChartId: id };
-    setFormData({ current: updated });
-    handleSendDataUp(updated);
-  };
+  // linkedChartId handled within the rjsf form; enum injected into schema above
 
   // handle avatar upload: the FileSelect widget will return base64 string
   // we upload to server and replace value with public URL
@@ -324,15 +310,6 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
 
   return (
     <div className="tab" id="organisation-tab">
-      <div className="mb-3">
-        <label className="form-label">Unterkategorisierende Organisation (verknüpftes Organigram)</label>
-        <select className="form-select" value={formData.current?.linkedChartId || ""} onChange={handleLinkedChartChange}>
-          <option value="">Keine</option>
-          {sharedCharts.map((s) => (
-            <option key={s.id} value={s.id}>{s.title}</option>
-          ))}
-        </select>
-      </div>
       <AlertModal
         onOkay={removeNode}
         show={removeNodeAlertModalShow}

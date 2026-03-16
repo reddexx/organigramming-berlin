@@ -225,6 +225,17 @@
           "enum": ["vertical", "horizontal"],
           "enumNames": ["Vertikal", "Horizontal"]
         }
+      ,
+      "linkedChartId": {
+        "type": "string",
+        "title": "Unterkategorisierende Organisation (verknüpftes Organigram)",
+        "default": ""
+      },
+      "avatar": {
+        "type": "string",
+        "title": "Avatar",
+        "format": "data-url"
+      }
       },
 
       "required": ["id", "name"],
