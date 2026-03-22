@@ -17,7 +17,6 @@ import CustomDropdown from "../From/CustomDropdown";
 import { checkErrors } from "../../services/checkErrors";
 
 import { getDefinitions } from "../../services/getDefinitions";
-const definitions = getDefinitions();
 
 const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCharts = [] }) => {
   const [formData, setFormData] = useState({ current: selected });
@@ -44,18 +43,24 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     FileSelect: FileSelect,
   };
 
-  const schema = { ...definitions };
-  // inject dynamic enum values into organisation definition
-  if (
-    schema.definitions &&
-    schema.definitions.organisation &&
-    schema.definitions.organisation.properties
-  ) {
-    schema.definitions.organisation.properties.linkedChartId =
-      schema.definitions.organisation.properties.linkedChartId || {};
-    schema.definitions.organisation.properties.linkedChartId.enum = linkedEnum;
-    schema.definitions.organisation.properties.linkedChartId.enumNames = linkedEnumNames;
-  }
+  const definitions = getDefinitions();
+  definitions.definitions.organisation.properties.linkedChartId = {
+    ...(definitions.definitions.organisation.properties.linkedChartId || {}),
+    type: "string",
+    title: "Unterkategorisierende Organisation (verknüpftes Organigram)",
+    enum: linkedEnum,
+    enumNames: linkedEnumNames,
+    default: "",
+  };
+
+  const schema = {
+    ...definitions,
+    properties: {
+      current: {
+        $ref: "#/definitions/organisation",
+      },
+    },
+  };
   const uiSchema = {
     "ui:headless": true,
     current: {
@@ -134,7 +139,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         },
         bgColor: {},
         bgStyle: {
-          "ui:disabled": !formData.current.layout?.bgColor,
+          "ui:disabled": !formData.current?.layout?.bgColor,
           "ui:widget": "radio",
           "ui:options": {
             inline: true,
@@ -209,6 +214,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       setFormData({ current: { ...selected } });
       setIdPrefix(selected.id);
     } else {
+      setFormData({ current: null });
       setIdPrefix("root");
     }
   }, [selected]);
@@ -256,18 +262,25 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       }, 700);
     }
 
-    setFormData({ ...e.formData });
+    const nextFormData = {
+      current: {
+        ...e.formData.current,
+        linkedChartId: e.formData.current.linkedChartId || "",
+      },
+    };
+
+    setFormData(nextFormData);
     // if avatar changed as base64, upload it
     if (e.formData.current && e.formData.current.avatar && e.formData.current.avatar.indexOf('base64') !== -1) {
       handleAvatarUpload(e.formData.current.avatar);
       // do not send base64 contents up
-      const tmp = { ...e.formData.current };
+      const tmp = { ...nextFormData.current };
       delete tmp.avatar;
       handleSendDataUp({ ...tmp });
       return;
     }
 
-    handleSendDataUp({ ...e.formData.current });
+    handleSendDataUp({ ...nextFormData.current });
   };
 
   const onBlur = async () => {

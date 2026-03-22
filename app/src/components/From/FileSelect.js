@@ -1,5 +1,3 @@
-//inspiert by https://github.com/TreeHacks/root/blob/9f21f350416493e1f90fed5102330f4c8f8f1d0c/src/FormPage/FormPage.tsx%23L27-L52
-import FileWidget from "@rjsf/core/lib/components/widgets/FileWidget.js";
 import SelectWidget from "@rjsf/core/lib/components/widgets/SelectWidget";
 
 import React, { useState, useEffect } from "react";
@@ -30,10 +28,11 @@ const FilePreview = (props) => {
 const FilePreviewWidget = (props) => {
   const [selected, setSelected] = useState(props.value);
   const [file, setFile] = useState(props.value || undefined);
+  const preuploads = props.options?.preuploads || props.uiSchema?.preuploads || [];
 
   const enumOptions = [
     { label: "Datei hochladen", value: "upload" },
-    ...props.uiSchema.preuploads.map((e) => {
+    ...preuploads.map((e) => {
       return {
         label: e.filename,
         value: e.filename,
@@ -44,28 +43,32 @@ const FilePreviewWidget = (props) => {
 
   useEffect(() => {
     if (props.value) {
-      const splitted = props.value.split(","), // Split params
-        params = splitted[0].split(";"), // Get mime-type from params
-        properties = params.filter(function (param) {
-          return param.split("=")[0] === "name";
-        }); // Look for the name and use unknown if no name property.
+      if (props.value.startsWith("data:")) {
+        const splitted = props.value.split(","),
+          params = splitted[0].split(";"),
+          properties = params.filter(function (param) {
+            return param.split("=")[0] === "name";
+          });
 
-      var name;
-
-      if (properties.length !== 1) {
-        name = "unknown";
+        let name;
+        if (properties.length !== 1) {
+          name = "unknown";
+        } else {
+          name = properties[0].split("=")[1];
+        }
+        setSelected(name);
       } else {
-        // Because we filtered out the other property,
-        // we only have the name case here.
-        name = properties[0].split("=")[1];
-      } // Built the Uint8Array Blob parameter from the base64 string.
-      setSelected(name);
+        const parts = props.value.split("/");
+        setSelected(parts[parts.length - 1] || "uploaded-file");
+      }
+    } else {
+      setSelected("");
     }
   }, [props.value]);
 
   const onSelect = (e) => {
     if (e !== "upload") {
-      const _file = props.uiSchema.preuploads.find((s) => s.filename === e),
+      const _file = preuploads.find((s) => s.filename === e),
         base64String = _file.base64String;
 
       setSelected(e);
@@ -80,18 +83,35 @@ const FilePreviewWidget = (props) => {
     }
   };
 
+  const onFileChange = (event) => {
+    const nextFile = event.target.files && event.target.files[0];
+    if (!nextFile) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = reader.result;
+      setFile(value);
+      setSelected(nextFile.name);
+      props.onChange(value);
+      setTimeout(() => {
+        props.onBlur && props.onBlur(props.id, value);
+      }, 100);
+    };
+    reader.readAsDataURL(nextFile);
+  };
+
   return (
     <div className="mb-0">
-    <label className="form-label">{props.label}</label>
+      <label className="form-label">{props.label}</label>
       {props.value && <FilePreview key="preview" {...props} />}
-      {props.uiSchema.preuploads && (
+      {preuploads.length > 0 && (
         <SelectWidget
           {...props}
           options={{ enumOptions: enumOptions }}
-          id={props.id + "-select"} 
+          id={props.id + "-select"}
           schema={{
             ...props.schema,
-            default:"none",
+            default: "none",
           }}
           placeholder="Auswählen"
           onChange={(e) => onSelect(e)}
@@ -100,18 +120,30 @@ const FilePreviewWidget = (props) => {
         />
       )}
       {!selected && (
-        <FileWidget
+        <input
           key="file"
-          {...props}
-          value={file}
-          onChange={(v) => {
-            props.onChange(v);
-            setTimeout(() => {
-              props.onBlur();
-            }, 100);
-            // }
-          }}
+          id={props.id}
+          type="file"
+          className="form-control"
+          accept="image/*"
+          onChange={onFileChange}
         />
+      )}
+      {selected && (
+        <button
+          type="button"
+          className="btn btn-outline-secondary btn-sm mt-2"
+          onClick={() => {
+            setSelected("");
+            setFile(undefined);
+            props.onChange("");
+            setTimeout(() => {
+              props.onBlur && props.onBlur(props.id, "");
+            }, 100);
+          }}
+        >
+          Datei ersetzen
+        </button>
       )}
     </div>
   );
