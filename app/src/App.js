@@ -86,6 +86,7 @@ const App = () => {
     },
   ] = useUndo(initdata());
   const { present: undoData } = dataState;
+  const effectiveMode = isAuthenticated ? "admin" : mode;
 
   useEffect(() => {
     setData(undoData);
@@ -533,7 +534,7 @@ const App = () => {
             ref={controlLayer}
             closeNewDocumentModal={closeNewDocumentModal}
             dataURL={dataURL}
-            mode={isAuthenticated ? "admin" : mode}
+            mode={effectiveMode}
             setMode={(m) => setMode(m)}
             isAuthenticated={isAuthenticated}
             onRequestLogin={showLoginModal}
@@ -557,8 +558,8 @@ const App = () => {
           className="chart-layer"
           data={data}
           sendDataUp={onChange}
-          mode={isAuthenticated ? "admin" : mode}
-          onOpenLinkedChart={loadSharedChart}
+          mode={effectiveMode}
+          onOpenLinkedChart={effectiveMode === "viewer" ? loadSharedChart : undefined}
           setSelected={(e) => {
             setSelected(e);
           }}
