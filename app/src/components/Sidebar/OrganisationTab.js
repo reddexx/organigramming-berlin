@@ -40,7 +40,6 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     UriSearch: UriSearch,
     MainOrganisation: MainOrganisation,
     CustomDropdown: CustomDropdown,
-    FileSelect: FileSelect,
   };
 
   const definitions = getDefinitions();
@@ -154,10 +153,8 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         "ui:placeholder": "Auswählen...",
       },
       avatar: {
-        "ui:widget": "FileSelect",
-        "ui:options": {
-          preuploads: [],
-        },
+        "ui:widget": FileSelect,
+        preuploads: [],
       },
       departments: {
         items: {
