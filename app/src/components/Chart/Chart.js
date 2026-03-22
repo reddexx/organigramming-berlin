@@ -13,6 +13,8 @@ import getURI from "../../services/getURI";
 
 const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin", onOpenLinkedChart }, ref) => {
   const orgchart = useRef();
+  const normalizedMode = String(mode || "").trim().toLowerCase();
+  const isAdminMode = normalizedMode === "admin";
 
   useImperativeHandle(ref, () => ({
     exportTo: (fileName, fileextension, includeLogo, vectorPdf) => {
@@ -189,7 +191,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
         collapsible={false}
         // multipleSelect={isMultipleSelect}
         onClickNode={(nodeData) => {
-          if (mode === "admin") {
+          if (isAdminMode) {
             readSelectedNode(nodeData);
           } else {
             if (nodeData && nodeData.linkedChartId && typeof onOpenLinkedChart === 'function') {
@@ -202,11 +204,11 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
         onAddInitNode={onAddInitNode}
         onContextMenu={onContextMenu}
         onCloseContextMenu={onCloseContextMenu}
-        onOpenDocument={mode === "admin" ? (() => setSelected("document")) : (() => {})}
+        onOpenDocument={isAdminMode ? (() => setSelected("document")) : (() => {})}
         pan={true}
         zoom={true}
-        draggable={mode === "admin"}
-        contentEditable={mode === "admin"}
+        draggable={isAdminMode}
+        contentEditable={isAdminMode}
       />
       {contextMenuStyle && (
         <ul className="dropdown-menu" style={contextMenuStyle}>
@@ -287,7 +289,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
                 addChildNode();
               }}
               className="dropdown-item"
-              disabled={mode === "viewer"}
+              disabled={!isAdminMode}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -312,7 +314,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
                 addSiblingNode();
               }}
               className="dropdown-item"
-              disabled={mode === "viewer"}
+              disabled={!isAdminMode}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -340,7 +342,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
               }}
               className="dropdown-item"
               variant="danger"
-              disabled={mode === "viewer"}
+              disabled={!isAdminMode}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
