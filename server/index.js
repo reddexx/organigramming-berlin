@@ -40,7 +40,7 @@ app.get('/api/charts', async (req, res) => {
 app.post('/api/charts', async (req, res) => {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
-    const list = (
+    let list = (
       (await (async () => {
         try {
           const raw = await fs.readFile(SHARED_FILE, 'utf8');
@@ -51,16 +51,32 @@ app.post('/api/charts', async (req, res) => {
       })())
     );
     const payload = req.body;
+    const shouldOverwrite = Boolean(payload.overwrite && payload.id);
+    const existingIndex = shouldOverwrite
+      ? list.findIndex((chart) => chart.id === payload.id)
+      : -1;
+
     // simple id if not present
     if (!payload.id) payload.id = Date.now().toString();
     payload.timestamp = new Date().toISOString();
+    delete payload.overwrite;
+
     // if payload requests to be main chart, unset others
     if (payload.isMainChart) {
       list = list.map((c) => ({ ...c, isMainChart: false }));
     }
-    list.unshift(payload);
+
+    if (existingIndex >= 0) {
+      list[existingIndex] = {
+        ...list[existingIndex],
+        ...payload,
+      };
+    } else {
+      list.unshift(payload);
+    }
+
     await fs.writeFile(SHARED_FILE, JSON.stringify(list, null, 2), 'utf8');
-    res.status(201).json(payload);
+    res.status(existingIndex >= 0 ? 200 : 201).json(payload);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'failed to save' });

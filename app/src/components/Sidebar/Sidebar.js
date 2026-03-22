@@ -1,4 +1,4 @@
-import { Row, Navbar, Nav, ButtonGroup, Button, Dropdown } from "react-bootstrap";
+import { Row, Navbar, Nav, ButtonGroup, Button, Dropdown, Modal } from "react-bootstrap";
 import React, {
   useState,
   useEffect,
@@ -49,10 +49,14 @@ const Sidebar = forwardRef(
     const [newDocumentModalShow, setNewDocumentModalShow] = useState(false);
     const [exportModalShow, setExportModalShow] = useState(false);
     const [settingsModalShow, setSettingsModalShow] = useState(false);
+    const [saveModalShow, setSaveModalShow] = useState(false);
 
     const [infoModalShow, setInfoModalShow] = useState(false);
     const newDocRef = useRef();
     const docInfoRef = useRef();
+    const currentSharedChart = (sharedCharts || []).find(
+      (chart) => chart.id === currentSharedChartId
+    );
     // const organisationTabRef = useRef();
 
     const onChange = (e) => {
@@ -129,6 +133,45 @@ const Sidebar = forwardRef(
             onJoyrideStart={() => onJoyrideStart()}
             onHide={() => setInfoModalShow(false)}
           />
+        )}
+        {saveModalShow && (
+          <Modal show={saveModalShow} onHide={() => setSaveModalShow(false)} centered>
+            <Modal.Header closeButton>
+              <Modal.Title>Organigramm speichern</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              Möchten Sie den aktuellen Stand überschreiben oder ein neues Organigramm erstellen?
+              {currentSharedChart && (
+                <div className="mt-3 text-muted">
+                  Aktuell geladen: <strong>{currentSharedChart.title}</strong>
+                </div>
+              )}
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="outline-secondary" onClick={() => setSaveModalShow(false)}>
+                Abbrechen
+              </Button>
+              <Button
+                variant="outline-primary"
+                onClick={() => {
+                  setSaveModalShow(false);
+                  onPublish && onPublish({ overwrite: false });
+                }}
+              >
+                Neu erstellen
+              </Button>
+              <Button
+                variant="outline-success"
+                disabled={!currentSharedChartId}
+                onClick={() => {
+                  setSaveModalShow(false);
+                  onPublish && onPublish({ overwrite: true });
+                }}
+              >
+                Überschreiben
+              </Button>
+            </Modal.Footer>
+          </Modal>
         )}
         <Row>
           <Navbar bg="transperent" expand="lg" ref={ref}>
@@ -368,7 +411,7 @@ const Sidebar = forwardRef(
                 </Dropdown.Menu>
               </Dropdown>
               {isAuthenticated && onPublish && (
-                <Button variant="light" title="Speichern" onClick={() => onPublish()} className="me-2">
+                <Button variant="light" title="Speichern" onClick={() => setSaveModalShow(true)} className="me-2">
                   Speichern
                 </Button>
               )}

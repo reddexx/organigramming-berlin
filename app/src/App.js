@@ -301,13 +301,15 @@ const App = () => {
     return sharedCharts;
   };
 
-  const publishCurrentChart = (meta = {}) => {
+  const publishCurrentChart = (options = {}) => {
     const title = data?.document?.title || "Untitled";
+    const overwrite = Boolean(options.overwrite && currentSharedChartId);
     const payload = {
       title,
-      meta,
+      meta: options.meta || {},
       data,
       isMainChart: data?.document?.isMainOrganisation === true,
+      ...(overwrite ? { id: currentSharedChartId, overwrite: true } : {}),
     };
     return fetch('/api/charts', {
       method: 'POST',
@@ -316,7 +318,20 @@ const App = () => {
     })
       .then((res) => res.json())
       .then((saved) => {
-        setSharedCharts((prev) => [saved, ...(prev || [])]);
+        setSharedCharts((prev) => {
+          const current = prev || [];
+          if (overwrite) {
+            return current.map((item) => {
+              if (item.id === saved.id) return saved;
+              if (saved.isMainChart) return { ...item, isMainChart: false };
+              return item;
+            });
+          }
+          const next = saved.isMainChart
+            ? current.map((item) => ({ ...item, isMainChart: false }))
+            : current;
+          return [saved, ...next];
+        });
         setCurrentSharedChartId(saved.id);
         return saved;
       })
