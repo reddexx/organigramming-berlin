@@ -117,6 +117,10 @@
             text-align: left;
             background-color: $white;
 
+            &.has-avatar {
+              padding-right: 4.5rem;
+            }
+
             .grid-container {
               display: grid;
               grid-template-columns: 1fr 1fr;

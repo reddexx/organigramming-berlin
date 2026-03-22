@@ -15,7 +15,7 @@ const ChartNodePositions = forwardRef(({ ds, data, positions }, ref) => {
           (position, j) =>
             isDefiend(position) && (
               <li
-                className="d-flex align-items-top"
+                className="d-flex align-items-start"
                 key={
                   j +
                   data.name +

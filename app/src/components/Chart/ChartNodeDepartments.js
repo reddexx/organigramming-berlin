@@ -31,7 +31,7 @@ const ChartNodeDepartments = forwardRef(({ ds, data, departments }, ref) => {
                     (position, j) =>
                       isDefiend(position) && (
                         <li
-                          className="d-flex align-items-top mb-2"
+                          className="d-flex align-items-start mb-2"
                           key={
                             i +
                             j +

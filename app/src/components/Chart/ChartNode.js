@@ -248,7 +248,7 @@ const ChartNode = forwardRef(
               )}
             </div>
             {(ds.departments || ds.positions || ds.contact || ds.address) && (
-              <div className="oc-content">
+              <div className={`oc-content${ds.avatar ? " has-avatar" : ""}`}>
                 {ds.avatar && (
                   <div className="oc-avatar">
                     <img src={ds.avatar} alt="avatar" />
