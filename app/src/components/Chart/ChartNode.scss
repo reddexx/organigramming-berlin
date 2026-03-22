@@ -107,6 +107,7 @@
             }
           }
           .oc-content {
+            position: relative;
             padding: 0.75rem;
             width: 100%;
             max-width: 100%;
@@ -132,8 +133,8 @@
 
             .oc-avatar {
               position: absolute;
-              top: 8px;
-              right: 8px;
+              top: 0.75rem;
+              right: 0.75rem;
               img {
                 width: 48px;
                 height: 48px;
