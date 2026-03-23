@@ -108,20 +108,27 @@ const App = () => {
       undo: setUndo,
       redo: setRedo,
       canUndo,
-
-      const normalizeMainCharts = (charts = [], preferredId) => {
-        const activeMainId =
+      canRedo,
+    },
+  ] = useUndo(initdata());
   const { present: undoData } = dataState;
   const effectiveMode = isAuthenticated ? "admin" : mode;
-                  const updated = current.map((item) => {
-                    if (item.id === saved.id) return saved;
-                    return item;
 
+  useEffect(() => {
+    setData(undoData);
+  }, [undoData]);
+
+  const onChange = async (e) => {
+    if (isDefiend(e)) {
+      const [valid, errors] = validateData(e);
+      if (valid) {
+        const dataSting = JSON.stringify(e);
+        setUndoData(JSON.parse(dataSting));
         localStorage.setItem("data", JSON.stringify(e));
         setCloseNewDocumentModal((prev) => prev + 1);
       } else {
         console.error(errors);
-              const charts = normalizeMainCharts(list || []);
+      }
     }
   };
 
