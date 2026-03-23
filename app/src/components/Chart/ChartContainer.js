@@ -554,7 +554,8 @@ const ChartContainer = forwardRef(
             (exporting ? "exporting" : "")
           }
           onWheel={zoom ? zoomHandler : undefined}
-          onMouseUp={panning ? panEndHandler : undefined}
+          onMouseUp={panning || potentialPan ? panEndHandler : undefined}
+          onMouseLeave={panning || potentialPan ? panEndHandler : undefined}
         >
           <div className="navigation-container">
             <ButtonGroup aria-label="navigation" vertical>
@@ -623,6 +624,7 @@ const ChartContainer = forwardRef(
             onClick={clickChartHandler}
             onMouseDown={enablePan ? panStartHandler : undefined}
             onMouseMove={enablePan && (panning || potentialPan) ? panHandler : undefined}
+            onMouseUp={panning || potentialPan ? panEndHandler : undefined}
           >
             <div
               id="paper"
