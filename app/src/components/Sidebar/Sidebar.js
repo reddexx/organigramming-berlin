@@ -1,4 +1,4 @@
-import { Row, Navbar, Nav, ButtonGroup, Button, Dropdown, Modal } from "react-bootstrap";
+import { Row, Navbar, Nav, ButtonGroup, Button, Dropdown, Modal, Badge } from "react-bootstrap";
 import React, {
   useState,
   useEffect,
@@ -405,7 +405,17 @@ const Sidebar = forwardRef(
                       key={s.id}
                       onClick={() => onLoadSharedChart && onLoadSharedChart(s.id)}
                     >
-                      {s.title} <small className="text-muted">{s.timestamp ? new Date(s.timestamp).toLocaleString() : ''}</small>
+                      <span className="d-flex justify-content-between align-items-center gap-2">
+                        <span>
+                          {s.title}{" "}
+                          <small className="text-muted">
+                            {s.timestamp ? new Date(s.timestamp).toLocaleString() : ""}
+                          </small>
+                        </span>
+                        {(s.isMainChart || s?.data?.document?.isMainChart) && (
+                          <Badge bg="success">Standard</Badge>
+                        )}
+                      </span>
                     </Dropdown.Item>
                   ))}
                 </Dropdown.Menu>
