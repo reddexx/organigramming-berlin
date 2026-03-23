@@ -1,4 +1,4 @@
-import { Row, Navbar, Nav, ButtonGroup, Button, Dropdown, Modal, Badge } from "react-bootstrap";
+import { Row, Navbar, Nav, ButtonGroup, Button, Dropdown, Modal } from "react-bootstrap";
 import React, {
   useState,
   useEffect,
@@ -405,17 +405,31 @@ const Sidebar = forwardRef(
                       key={s.id}
                       onClick={() => onLoadSharedChart && onLoadSharedChart(s.id)}
                     >
-                      <span className="d-flex justify-content-between align-items-center gap-2">
-                        <span>
-                          {s.title}{" "}
-                          <small className="text-muted">
-                            {s.timestamp ? new Date(s.timestamp).toLocaleString() : ""}
-                          </small>
-                        </span>
-                        {(s.isMainChart || s?.data?.document?.isMainChart) && (
-                          <Badge bg="success">Standard</Badge>
-                        )}
-                      </span>
+                      <div>
+                        <div>
+                          {s.title}
+                          {(s.isMainChart || s?.data?.document?.isMainChart) && (
+                            <span
+                              className="ms-2"
+                              style={{
+                                display: "inline-block",
+                                padding: "0.1rem 0.4rem",
+                                borderRadius: "999px",
+                                backgroundColor: "#198754",
+                                color: "#fff",
+                                fontSize: "0.7rem",
+                                fontWeight: 600,
+                                verticalAlign: "middle",
+                              }}
+                            >
+                              Standard
+                            </span>
+                          )}
+                        </div>
+                        <small className="text-muted">
+                          {s.timestamp ? new Date(s.timestamp).toLocaleString() : ""}
+                        </small>
+                      </div>
                     </Dropdown.Item>
                   ))}
                 </Dropdown.Menu>
