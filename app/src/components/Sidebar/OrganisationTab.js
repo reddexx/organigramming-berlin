@@ -11,6 +11,7 @@ import ObjectFieldTemplate from "../From/ObjectFieldTemplate";
 import CollapsibleField from "../From/CollapsibleField";
 import UriSearch from "../From/UriSearch";
 import MainOrganisation from "../From/MainOrganisation";
+import ColorPickerWidget from "../From/ColorPickerWidget";
 
 import CustomDropdown from "../From/CustomDropdown";
 
@@ -136,13 +137,45 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         style: {
           title: "Stil",
         },
-        bgColor: {},
+        bgColor: {
+          "ui:widget": ColorPickerWidget,
+          colors: [
+            "#c41b31",
+            "#bdcde7",
+            "#7694ce",
+            "#324fa3",
+            "#b5d4b7",
+            "#67b18d",
+            "#357a5d",
+            "#0e4c38",
+            "#db9f29",
+            "#e5bbd0",
+            "#988bc2",
+            "#00b140",
+            "#97d700",
+            "#c4d600",
+            "#333333",
+            "#666666",
+            "#999999",
+            "#cccccc",
+            "#e6e6e6",
+            "#f2f2f2",
+          ],
+        },
         bgStyle: {
           "ui:disabled": !formData.current?.layout?.bgColor,
           "ui:widget": "radio",
           "ui:options": {
             inline: true,
           },
+        },
+        nodeWidth: {
+          "ui:widget": "range",
+          "ui:help": "Breite der Box in Pixeln",
+        },
+        nodeMinHeight: {
+          "ui:widget": "range",
+          "ui:help": "Minimale Höhe der Box in Pixeln, 0 = automatisch",
         },
       },
       organisations: {

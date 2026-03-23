@@ -622,7 +622,7 @@ const ChartContainer = forwardRef(
             className={"editor " + chartClass + (exporting ? " exporting" : "")}
             onClick={clickChartHandler}
             onMouseDown={enablePan ? panStartHandler : undefined}
-            onMouseMove={enablePan && panning ? panHandler : undefined}
+            onMouseMove={enablePan && (panning || potentialPan) ? panHandler : undefined}
           >
             <div
               id="paper"

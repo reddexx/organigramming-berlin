@@ -209,6 +209,11 @@ const ChartNode = forwardRef(
             style={{
               backgroundColor:
                 ds?.layout && ds.layout?.bgColor ? ds.layout?.bgColor : "",
+              width: ds?.layout?.nodeWidth ? `${ds.layout.nodeWidth}px` : "",
+              minHeight:
+                ds?.layout?.nodeMinHeight && ds.layout.nodeMinHeight > 0
+                  ? `${ds.layout.nodeMinHeight}px`
+                  : "",
             }}
           >
             <div

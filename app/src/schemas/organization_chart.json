@@ -125,53 +125,7 @@
             "bgColor": {
               "title": "Hintergrundfarbe",
               "type": "string",
-              "default": "",
-              "enum": [
-                "",
-                "#c41b31",
-                "#bdcde7",
-                "#7694ce",
-                "#324fa3",
-                "#b5d4b7",
-                "#67b18d",
-                "#357a5d",
-                "#0e4c38",
-                "#db9f29",
-                "#e5bbd0",
-                "#988bc2",
-                "#00b140",
-                "#97d700",
-                "#c4d600",
-                "#333333",
-                "#666666",
-                "#999999",
-                "#cccccc",
-                "#e6e6e6",
-                "#f2f2f2"
-              ],
-              "enumNames": [
-                "Standard",
-                "Rot",
-                "Hellblau",
-                "Mittelblau",
-                "Blau",
-                "Hellgrün",
-                "Mittelgrün",
-                "Grün",
-                "Dunkelgrün",
-                "Orange",
-                "Rosa",
-                "Violett",
-                "Pantone 354",
-                "Pantone 375",
-                "Pantone 382",
-                "Schwarz 80%",
-                "Schwarz 60%",
-                "Schwarz 40%",
-                "Schwarz 20%",
-                "Schwarz 10%",
-                "Schwarz 5%"
-              ]
+              "default": ""
             },
             "bgStyle": {
               "title": "Hintergrund Stil",
@@ -179,6 +133,20 @@
               "default": "default",
               "enum": ["default", "half"],
               "enumNames": ["Voll", "Halb"]
+            },
+            "nodeWidth": {
+              "title": "Boxbreite",
+              "type": "integer",
+              "default": 224,
+              "minimum": 160,
+              "maximum": 480
+            },
+            "nodeMinHeight": {
+              "title": "Boxhöhe",
+              "type": "integer",
+              "default": 0,
+              "minimum": 0,
+              "maximum": 640
             },
             "grid": {
               "title": "Anordnung",

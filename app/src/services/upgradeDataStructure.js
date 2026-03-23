@@ -129,6 +129,18 @@ function addNewPropsToOrgs(data) {
       org.purpose = "";
     }
 
+    if (!org.layout) {
+      org.layout = {};
+    }
+
+    if (org.layout.nodeWidth === undefined) {
+      org.layout.nodeWidth = 224;
+    }
+
+    if (org.layout.nodeMinHeight === undefined) {
+      org.layout.nodeMinHeight = 0;
+    }
+
     if (!org?.background && !org?.layout) {
       org.background = {
         color: "",
@@ -140,6 +152,7 @@ function addNewPropsToOrgs(data) {
     // migrate it and delete it
     if (org.background) {
       org.layout = {
+        ...org.layout,
         bgColor: org.background.color,
         bgStyle: org.background.style,
       };
