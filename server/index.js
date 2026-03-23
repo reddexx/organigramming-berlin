@@ -9,6 +9,32 @@ const PORT = process.env.PORT || 80;
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const SHARED_FILE = path.join(DATA_DIR, 'shared-charts.json');
 
+function normalizeMainCharts(list, preferredId) {
+  if (!Array.isArray(list)) return [];
+
+  const existingMain = list.find(
+    (chart) => chart.isMainChart || chart?.data?.document?.isMainChart
+  );
+  const activeMainId = preferredId || existingMain?.id || null;
+
+  return list.map((chart) => {
+    const isMain = activeMainId ? chart.id === activeMainId : false;
+    return {
+      ...chart,
+      isMainChart: isMain,
+      data: chart.data
+        ? {
+            ...chart.data,
+            document: {
+              ...(chart.data.document || {}),
+              isMainChart: isMain,
+            },
+          }
+        : chart.data,
+    };
+  });
+}
+
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
@@ -30,7 +56,12 @@ app.get('/env.json', async (req, res) => {
 app.get('/api/charts', async (req, res) => {
   try {
     const raw = await fs.readFile(SHARED_FILE, 'utf8');
-    res.json(JSON.parse(raw));
+    const list = JSON.parse(raw);
+    const normalized = normalizeMainCharts(list);
+    if (JSON.stringify(normalized) !== JSON.stringify(list)) {
+      await fs.writeFile(SHARED_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+    }
+    res.json(normalized);
   } catch (e) {
     // if file missing or invalid, return empty array
     res.json([]);
@@ -61,9 +92,15 @@ app.post('/api/charts', async (req, res) => {
     payload.timestamp = new Date().toISOString();
     delete payload.overwrite;
 
-    // if payload requests to be main chart, unset others
-    if (payload.isMainChart) {
-      list = list.map((c) => ({ ...c, isMainChart: false }));
+    payload.isMainChart = payload.isMainChart === true;
+    if (payload.data) {
+      payload.data = {
+        ...payload.data,
+        document: {
+          ...(payload.data.document || {}),
+          isMainChart: payload.isMainChart,
+        },
+      };
     }
 
     if (existingIndex >= 0) {
@@ -74,6 +111,8 @@ app.post('/api/charts', async (req, res) => {
     } else {
       list.unshift(payload);
     }
+
+    list = normalizeMainCharts(list, payload.isMainChart ? payload.id : undefined);
 
     await fs.writeFile(SHARED_FILE, JSON.stringify(list, null, 2), 'utf8');
     res.status(existingIndex >= 0 ? 200 : 201).json(payload);

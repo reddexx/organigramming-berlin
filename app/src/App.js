@@ -44,6 +44,32 @@ const initdata = () => {
   }
 };
 
+const normalizeMainCharts = (charts = [], preferredId) => {
+  const activeMainId =
+    preferredId ||
+    (charts || []).find(
+      (chart) => chart.isMainChart || chart?.data?.document?.isMainChart
+    )?.id ||
+    null;
+
+  return (charts || []).map((chart) => {
+    const isMain = activeMainId ? chart.id === activeMainId : false;
+    return {
+      ...chart,
+      isMainChart: isMain,
+      data: chart.data
+        ? {
+            ...chart.data,
+            document: {
+              ...(chart.data.document || {}),
+              isMainChart: isMain,
+            },
+          }
+        : chart.data,
+    };
+  });
+};
+
 const App = () => {
   const chart = useRef();
   const controlLayer = useRef();
@@ -82,27 +108,20 @@ const App = () => {
       undo: setUndo,
       redo: setRedo,
       canUndo,
-      canRedo,
-    },
-  ] = useUndo(initdata());
+
+      const normalizeMainCharts = (charts = [], preferredId) => {
+        const activeMainId =
   const { present: undoData } = dataState;
   const effectiveMode = isAuthenticated ? "admin" : mode;
+                  const updated = current.map((item) => {
+                    if (item.id === saved.id) return saved;
+                    return item;
 
-  useEffect(() => {
-    setData(undoData);
-  }, [undoData]);
-
-  const onChange = async (e) => {
-    if (isDefiend(e)) {
-      const [valid, errors] = validateData(e);
-      if (valid) {
-        const dataSting = JSON.stringify(e);
-        setUndoData(JSON.parse(dataSting));
         localStorage.setItem("data", JSON.stringify(e));
         setCloseNewDocumentModal((prev) => prev + 1);
       } else {
         console.error(errors);
-      }
+              const charts = normalizeMainCharts(list || []);
     }
   };
 
@@ -321,16 +340,19 @@ const App = () => {
         setSharedCharts((prev) => {
           const current = prev || [];
           if (overwrite) {
-            return current.map((item) => {
+            const updated = current.map((item) => {
               if (item.id === saved.id) return saved;
-              if (saved.isMainChart) return { ...item, isMainChart: false };
               return item;
             });
+            return normalizeMainCharts(
+              updated,
+              saved.isMainChart ? saved.id : undefined
+            );
           }
-          const next = saved.isMainChart
-            ? current.map((item) => ({ ...item, isMainChart: false }))
-            : current;
-          return [saved, ...next];
+          return normalizeMainCharts(
+            [saved, ...current],
+            saved.isMainChart ? saved.id : undefined
+          );
         });
         setCurrentSharedChartId(saved.id);
         return saved;
@@ -351,8 +373,9 @@ const App = () => {
       fetch('/api/charts')
         .then((r) => r.json())
         .then((list) => {
-          setSharedCharts(list || []);
-          const it = (list || []).find((s) => s.id === id);
+          const charts = normalizeMainCharts(list || []);
+          setSharedCharts(charts);
+          const it = charts.find((s) => s.id === id);
           if (it && it.data) onChange(it.data);
           if (it) setCurrentSharedChartId(it.id);
         });
@@ -364,9 +387,11 @@ const App = () => {
     fetch('/api/charts')
       .then((r) => r.json())
       .then((list) => {
-        const charts = list || [];
+        const charts = normalizeMainCharts(list || []);
         setSharedCharts(charts);
-        const main = charts.find((s) => s.isMainChart || (s.data && s.data.document && s.data.document.isMainChart));
+        const main = charts.find(
+          (s) => s.isMainChart || (s.data && s.data.document && s.data.document.isMainChart)
+        );
         if (main && main.data) {
           onChange(main.data);
           setCurrentSharedChartId(main.id);
@@ -384,7 +409,7 @@ const App = () => {
           throw new Error(body.message || 'Delete failed');
         }
         setSharedCharts((prev) => {
-          const remaining = (prev || []).filter((s) => s.id !== id);
+          const remaining = normalizeMainCharts((prev || []).filter((s) => s.id !== id));
           if (currentSharedChartId === id) {
             if (remaining.length > 0) {
               onChange(remaining[0].data);
