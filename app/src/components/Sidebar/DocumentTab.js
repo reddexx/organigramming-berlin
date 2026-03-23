@@ -1,5 +1,6 @@
 import Form from "@rjsf/bootstrap-4";
 import React, { useState, useRef } from "react";
+import { Form as BootstrapForm } from "react-bootstrap";
 import FileSelect from "../From/FileSelect";
 import ObjectFieldTemplate from "../From/ObjectFieldTemplate";
 import MDEditorWidget from "../From/MDEditor";
@@ -85,6 +86,9 @@ const DocumentTab = ({ data, sendDataUp }) => {
       schemaVersion: {
         "ui:widget": "hidden",
       },
+      isMainChart: {
+        "ui:widget": "hidden",
+      },
       paperOrientation: {
         "ui:widget": "radio",
         "ui:options": {
@@ -114,6 +118,18 @@ const DocumentTab = ({ data, sendDataUp }) => {
     handleSendDataUp({ ...e.formData });
   };
 
+  const onToggleMainChart = (e) => {
+    const nextFormData = {
+      ...formData,
+      document: {
+        ...formData.document,
+        isMainChart: e.target.checked,
+      },
+    };
+    setFormData(nextFormData);
+    handleSendDataUp(nextFormData);
+  };
+
   // const onBlur = () => {
   //   sendDataUp(formData);
   // };
@@ -122,8 +138,18 @@ const DocumentTab = ({ data, sendDataUp }) => {
   // };
 
   return (
-    <div className="tab">
-      <h2>Dokument</h2>
+    <div className="tab p-0 container-fluid">
+      <div className="px-3 pt-3">
+        <h2>Dokument</h2>
+        <BootstrapForm.Check
+          type="switch"
+          id="default-organigram-switch"
+          label="Standard Organigramm"
+          checked={Boolean(formData?.document?.isMainChart)}
+          onChange={onToggleMainChart}
+          className="mb-3"
+        />
+      </div>
       <Form
         schema={schema}
         uiSchema={uiSchema}

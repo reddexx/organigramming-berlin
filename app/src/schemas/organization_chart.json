@@ -48,6 +48,11 @@
           "type": "string",
           "title": "Fußzeile"
         },
+        "isMainChart": {
+          "type": "boolean",
+          "default": false,
+          "title": "Standard Organigramm"
+        },
         "uri": {
           "$ref": "#/definitions/uri"
         }

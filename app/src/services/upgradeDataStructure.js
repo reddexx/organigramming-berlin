@@ -205,6 +205,10 @@ export const upgradeDataStructure = (data) => {
     data.document.uri = { uri: getURI("organigram") };
   }
 
+  if (data.document?.isMainChart === undefined) {
+    data.document.isMainChart = false;
+  }
+
   // if doc has prop uriSameAs -> move it to sameAsUris
   if (data.document.uri.uriSameAs !== undefined) {
     data.document.uri = toSameAsArray(data.document.uri);

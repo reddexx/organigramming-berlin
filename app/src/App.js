@@ -308,7 +308,7 @@ const App = () => {
       title,
       meta: options.meta || {},
       data,
-      isMainChart: data?.document?.isMainOrganisation === true,
+      isMainChart: data?.document?.isMainChart === true,
       ...(overwrite ? { id: currentSharedChartId, overwrite: true } : {}),
     };
     return fetch('/api/charts', {
@@ -366,7 +366,7 @@ const App = () => {
       .then((list) => {
         const charts = list || [];
         setSharedCharts(charts);
-        const main = charts.find((s) => s.isMainChart || (s.data && s.data.document && s.data.document.isMainOrganisation));
+        const main = charts.find((s) => s.isMainChart || (s.data && s.data.document && s.data.document.isMainChart));
         if (main && main.data) {
           onChange(main.data);
           setCurrentSharedChartId(main.id);
