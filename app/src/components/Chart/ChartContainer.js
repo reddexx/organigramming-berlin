@@ -679,6 +679,7 @@ const ChartContainer = forwardRef(
               className={`paper ${data.document.paperSize} ${data.document.paperOrientation}`}
               style={{ transform: transform }}
             >
+              <ChartEdges node={node} paperRef={paper} />
               <span
                 className="paper-size-label"
                 onClick={(e) => {
@@ -782,7 +783,6 @@ const ChartContainer = forwardRef(
                     contentEditable={contentEditable}
                   />
                 </ul>
-                <ChartEdges node={node} paperRef={paper} />
               </div>
               {data.document.note && (
                 <div className="note-container">

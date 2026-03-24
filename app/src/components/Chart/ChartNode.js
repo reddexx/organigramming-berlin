@@ -323,11 +323,7 @@ const ChartNode = forwardRef(
               ? true
               : false
           }
-          onMouseDown={
-            ds.layout?.style !== "root" && layoutDragMode
-              ? startPositionDragHandler
-              : null
-          }
+          onMouseDown={ds.layout?.style !== "root" ? startPositionDragHandler : null}
           onClick={ds.layout?.style !== "root" ? clickNodeHandler : null}
           onDragStart={ds.layout?.style !== "root" && draggable ? dragStartHandler : null}
           onDragOver={dragOverHandler}
