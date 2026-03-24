@@ -287,7 +287,19 @@ const ChartNode = forwardRef(
     };
 
     return (
-      <li className={"oc-hierarchy level-" + level}>
+      <li
+        className={"oc-hierarchy level-" + level}
+        style={{
+          transform:
+            ds?.layout?.offsetX || ds?.layout?.offsetY
+              ? `translate(${ds.layout?.offsetX || 0}px, ${ds.layout?.offsetY || 0}px)`
+              : "",
+          zIndex:
+            positionDragging || ds?.layout?.offsetX || ds?.layout?.offsetY
+              ? 2
+              : undefined,
+        }}
+      >
         <div
           id={ds.id}
           ref={node}
@@ -303,16 +315,6 @@ const ChartNode = forwardRef(
                 : " has-child"
               : " end-node")
           }
-          style={{
-            transform:
-              ds?.layout?.offsetX || ds?.layout?.offsetY
-                ? `translate(${ds.layout?.offsetX || 0}px, ${ds.layout?.offsetY || 0}px)`
-                : "",
-            zIndex:
-              ds?.layout?.offsetX || ds?.layout?.offsetY
-                ? 2
-                : undefined,
-          }}
           draggable={
             ds.layout?.style !== "root" &&
             draggable &&
