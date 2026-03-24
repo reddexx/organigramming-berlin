@@ -25,6 +25,7 @@ const LEVEL_GAP = 220;
 const SIBLING_GAP = 56;
 const START_X = 80;
 const START_Y = 40;
+const CANVAS_PADDING = 160;
 
 const flattenNodes = (nodes, parentId = null, level = 1, result = []) => {
   (nodes || []).forEach((node) => {
@@ -86,6 +87,7 @@ const FreeLayoutCanvas = ({
   const wrapperRef = useRef();
   const nodeRefs = useRef({});
   const dragMovedRef = useRef(false);
+  const suppressClickRef = useRef(false);
 
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [nodeRects, setNodeRects] = useState({});
@@ -161,7 +163,11 @@ const FreeLayoutCanvas = ({
       return undefined;
     }
 
+    document.body.classList.add("free-layout-dragging");
+
     const handleMouseMove = (event) => {
+      event.preventDefault();
+
       const nextX = Math.max(
         0,
         Math.round(dragState.startPosition.x + event.clientX - dragState.startX)
@@ -189,6 +195,7 @@ const FreeLayoutCanvas = ({
       setDragState(null);
 
       if (dragMovedRef.current) {
+        suppressClickRef.current = true;
         await onUpdateNodeLayout(dragState.node.id, {
           positionMode: "manual",
           x: nextPosition.x,
@@ -204,14 +211,50 @@ const FreeLayoutCanvas = ({
       });
     };
 
+    const handleWindowBlur = () => {
+      setDragState(null);
+      dragMovedRef.current = false;
+      setDraftPositions((current) => {
+        const nextDrafts = { ...current };
+        delete nextDrafts[dragState.node.id];
+        return nextDrafts;
+      });
+    };
+
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("blur", handleWindowBlur);
 
     return () => {
+      document.body.classList.remove("free-layout-dragging");
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("blur", handleWindowBlur);
     };
   }, [dragState, draftPositions, onUpdateNodeLayout]);
+
+  const canvasSize = useMemo(() => {
+    const measuredWidths = Object.values(nodeRects).map(
+      (rect) => rect.left + rect.width + CANVAS_PADDING
+    );
+    const measuredHeights = Object.values(nodeRects).map(
+      (rect) => rect.top + rect.height + CANVAS_PADDING
+    );
+    const positionedWidths = flattenedNodes.map(({ node }) => {
+      const position = getPosition(node);
+      return position.x + getNodeWidth(node) + CANVAS_PADDING;
+    });
+    const positionedHeights = flattenedNodes.map(({ node }) => {
+      const position = getPosition(node);
+      const estimatedHeight = nodeRects[node.id]?.height || 160;
+      return position.y + estimatedHeight + CANVAS_PADDING;
+    });
+
+    return {
+      width: Math.max(1400, ...measuredWidths, ...positionedWidths),
+      height: Math.max(900, ...measuredHeights, ...positionedHeights),
+    };
+  }, [flattenedNodes, nodeRects, draftPositions]);
 
   const connectors = flattenedNodes
     .filter(({ parentId }) => parentId)
@@ -245,6 +288,17 @@ const FreeLayoutCanvas = ({
       return;
     }
 
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (onClickNode) {
+      onClickNode(node);
+    }
+
+    if (contentEditable) {
+      selectNodeService.sendSelectedNodeInfo(node.id);
+    }
+
     onCloseContextMenu?.();
     dragMovedRef.current = false;
     setDragState({
@@ -256,6 +310,11 @@ const FreeLayoutCanvas = ({
   };
 
   const handleNodeClick = (node) => {
+    if (dragMovedRef.current || suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+
     if (onClickNode) {
       onClickNode(node);
     }
@@ -280,7 +339,14 @@ const FreeLayoutCanvas = ({
   };
 
   return (
-    <div ref={wrapperRef} className="free-layout-canvas">
+    <div
+      ref={wrapperRef}
+      className="free-layout-canvas"
+      style={{
+        width: `${canvasSize.width}px`,
+        height: `${canvasSize.height}px`,
+      }}
+    >
       <svg className="free-layout-connectors" aria-hidden="true">
         {connectors.map((connector) => (
           <path key={connector.id} d={connector.d} />
@@ -325,6 +391,7 @@ const FreeLayoutCanvas = ({
                 onClick={() => handleNodeClick(node)}
                 onMouseDown={(event) => handleNodeMouseDown(event, node)}
                 onContextMenu={(event) => handleContextMenu(event, node)}
+                onDragStart={(event) => event.preventDefault()}
               >
                 <ChartNodeCard data={node} />
               </div>
