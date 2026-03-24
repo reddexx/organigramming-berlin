@@ -17,8 +17,7 @@ import { toPng, toBlob, toJpeg, toSvg } from "html-to-image";
 // import { elementToSVG, inlineResources } from "dom-to-svg";
 import jsPDF from "jspdf";
 import ChartNode from "./ChartNode";
-import ChartEdges from "./ChartEdges";
-import DrawCanvas from "./DrawCanvas";
+import FreeLayoutCanvas from "./FreeLayoutCanvas";
 import "./ChartContainer.scss";
 import { exportRDF } from "../../services/exportRDF";
 
@@ -108,8 +107,6 @@ const ChartContainer = forwardRef(
     const [exporting, setExporting] = useState(false);
     const [sizeWarning, setSizeWarning] = useState(false);
     const [paperSize, setPaperSize] = useState("");
-    const [layoutDragMode, setLayoutDragMode] = useState(false);
-    const [drawioMode, setDrawioMode] = useState(false);
 
     const [node, setNode] = useState({
       id: "n-root",
@@ -119,6 +116,7 @@ const ChartContainer = forwardRef(
     });
 
     const dsDigger = new JSONDigger(node, "id", "organisations");
+    const isFreeLayout = data?.document?.layoutMode === "free";
 
     useEffect(() => {
       resetViewHandler();
@@ -151,23 +149,17 @@ const ChartContainer = forwardRef(
       sendDataUp({ ...data, organisations: [...dsDigger.ds.organisations] });
     };
 
-    const changeNodePosition = async (nodeId, nextPosition) => {
-      if (!nodeId) {
-        return;
-      }
-
-      const targetNode = await dsDigger.findNodeById(nodeId);
-      targetNode.layout = {
-        ...(targetNode.layout || {}),
-        offsetX: nextPosition?.offsetX || 0,
-        offsetY: nextPosition?.offsetY || 0,
-      };
+    const updateNodeLayout = async (nodeId, layoutPatch) => {
+      const currentNode = await dsDigger.findNodeById(nodeId);
+      await dsDigger.updateNode({
+        ...currentNode,
+        layout: {
+          ...(currentNode.layout || {}),
+          ...layoutPatch,
+        },
+      });
 
       sendDataUp({ ...data, organisations: [...dsDigger.ds.organisations] });
-
-      if (contentEditable && typeof onClickNode === "function") {
-        onClickNode({ ...targetNode });
-      }
     };
 
     const clickChartHandler = (event) => {
@@ -574,7 +566,6 @@ const ChartContainer = forwardRef(
             containerClass +
             (dragging ? " dragging" : "") +
             (panning ? " panning" : "") +
-            (layoutDragMode ? " layout-drag-mode" : "") +
             (exporting ? "exporting" : "")
           }
           onWheel={zoom ? zoomHandler : undefined}
@@ -639,38 +630,6 @@ const ChartContainer = forwardRef(
                   />
                 </svg>
               </Button>
-              {contentEditable && (
-                <Button
-                  onClick={() => setLayoutDragMode((prev) => !prev)}
-                  title={
-                    layoutDragMode
-                      ? "Layout-Modus deaktivieren"
-                      : "Layout-Modus aktivieren"
-                  }
-                  variant={layoutDragMode ? "primary" : "secondary"}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    className="bi bi-arrows-move"
-                    viewBox="0 0 16 16"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M8 0a.5.5 0 0 1 .5.5v2.793l1.146-1.147a.5.5 0 1 1 .708.708L8.5 4.707V5.5a.5.5 0 0 1-1 0v-.793L5.646 2.854a.5.5 0 1 1 .708-.708L7.5 3.293V.5A.5.5 0 0 1 8 0zM3.293 7.5.5 7.5a.5.5 0 0 0 0 1h2.793L2.146 9.646a.5.5 0 1 0 .708.708L4.707 8.5H5.5a.5.5 0 0 0 0-1h-.793L2.854 5.646a.5.5 0 1 0-.708.708L3.293 7.5zm9.207 0H15.5a.5.5 0 0 1 0 1h-2.793l1.147 1.146a.5.5 0 0 1-.708.708L11.293 8.5H10.5a.5.5 0 0 1 0-1h.793l1.853-1.854a.5.5 0 1 1 .708.708L12.5 7.5zM8 10a.5.5 0 0 1 .5.5v2.793l1.146-1.147a.5.5 0 0 1 .708.708l-1.853 1.853v.793a.5.5 0 0 1-1 0v-.793l-1.854-1.853a.5.5 0 0 1 .708-.708L7.5 13.293V10.5A.5.5 0 0 1 8 10z"
-                    />
-                  </svg>
-                </Button>
-                <Button
-                  onClick={() => setDrawioMode((p) => !p)}
-                  title={drawioMode ? "Draw-Modus verlassen" : "Draw-Modus aktivieren"}
-                  variant={drawioMode ? "primary" : "secondary"}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-vector-pen" viewBox="0 0 16 16"><path d="M9.669.864 8.058 2.475l5.657 5.657 1.611-1.611A1 1 0 0 0 15 5.121L9.669.864zM8.06 3.086 1.5 9.646V13h3.354l6.56-6.56L8.06 3.086z"/></svg>
-                </Button>
-              )}
             </ButtonGroup>
           </div>
 
@@ -688,7 +647,6 @@ const ChartContainer = forwardRef(
               className={`paper ${data.document.paperSize} ${data.document.paperOrientation}`}
               style={{ transform: transform }}
             >
-              <ChartEdges node={node} paperRef={paper} />
               <span
                 className="paper-size-label"
                 onClick={(e) => {
@@ -772,28 +730,37 @@ const ChartContainer = forwardRef(
                 </div>
               )}
               <div className="chart-container">
-                <ul className="chart" style={{ transform: chartTransform }}>
-                  {/* keep original hierarchical view rendered — DrawCanvas overlays when active */}
-                  <ChartNode
-                    ref={topNode}
-                    data={node}
-                    level={0}
-                    index={0}
-                    update={update}
-                    draggable={draggable}
-                    collapsible={collapsible}
-                    multipleSelect={multipleSelect}
-                    changeHierarchy={changeHierarchy}
-                    onClickNode={onClickNode}
-                    onContextMenu={onContextMenu}
-                    onDragNode={onDragNode}
-                    onNodePositionChange={changeNodePosition}
-                    onAddInitNode={onAddInitNode}
-                    layoutDragMode={layoutDragMode}
-                    contentEditable={contentEditable}
-                  />
-                </ul>
-                {drawioMode && <DrawCanvas node={node} onNodePositionChange={changeNodePosition} />}
+                <div className="chart" style={{ transform: chartTransform }}>
+                  {isFreeLayout ? (
+                    <FreeLayoutCanvas
+                      nodes={node.organisations}
+                      contentEditable={contentEditable}
+                      onClickNode={onClickNode}
+                      onContextMenu={onContextMenu}
+                      onCloseContextMenu={onCloseContextMenu}
+                      onUpdateNodeLayout={updateNodeLayout}
+                    />
+                  ) : (
+                    <ul>
+                      <ChartNode
+                        ref={topNode}
+                        data={node}
+                        level={0}
+                        index={0}
+                        update={update}
+                        draggable={draggable}
+                        collapsible={collapsible}
+                        multipleSelect={multipleSelect}
+                        changeHierarchy={changeHierarchy}
+                        onClickNode={onClickNode}
+                        onContextMenu={onContextMenu}
+                        onDragNode={onDragNode}
+                        onAddInitNode={onAddInitNode}
+                        contentEditable={contentEditable}
+                      />
+                    </ul>
+                  )}
+                </div>
               </div>
               {data.document.note && (
                 <div className="note-container">

@@ -95,6 +95,12 @@ const DocumentTab = ({ data, sendDataUp }) => {
           inline: true,
         },
       },
+      layoutMode: {
+        "ui:widget": "radio",
+        "ui:options": {
+          inline: true,
+        },
+      },
       uri: {
         "ui:headless": true,
         "ui:field": "UriSearch",

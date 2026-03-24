@@ -53,6 +53,13 @@
           "default": false,
           "title": "Standard Organigramm"
         },
+        "layoutMode": {
+          "type": "string",
+          "title": "Layout Modus",
+          "default": "tree",
+          "enum": ["tree", "free"],
+          "enumNames": ["Baum", "Frei wie Draw.io"]
+        },
         "uri": {
           "$ref": "#/definitions/uri"
         }
@@ -148,19 +155,26 @@
               "minimum": 0,
               "maximum": 640
             },
-            "offsetX": {
+            "positionMode": {
+              "title": "Positionierung",
+              "type": "string",
+              "default": "auto",
+              "enum": ["auto", "manual"],
+              "enumNames": ["Automatisch", "Manuell"]
+            },
+            "x": {
               "title": "Position X",
               "type": "integer",
               "default": 0,
-              "minimum": -400,
-              "maximum": 400
+              "minimum": 0,
+              "maximum": 5000
             },
-            "offsetY": {
+            "y": {
               "title": "Position Y",
               "type": "integer",
               "default": 0,
-              "minimum": -300,
-              "maximum": 300
+              "minimum": 0,
+              "maximum": 5000
             },
             "grid": {
               "title": "Anordnung",

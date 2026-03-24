@@ -92,11 +92,26 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
   };
 
   const getNewNode = () => {
+    const isFreeLayout = data?.document?.layoutMode === "free";
+    const selectedLayout = selectedNode?.layout || {};
+    const baseX = Number.isFinite(selectedLayout.x) ? selectedLayout.x : 80;
+    const baseY = Number.isFinite(selectedLayout.y) ? selectedLayout.y : 40;
+
     return {
       type: "",
       name: "Organisation",
       id: "n" + uuidv4(),
       uri: { uri: getURI("organisation") },
+      ...(isFreeLayout
+        ? {
+            layout: {
+              style: "default",
+              positionMode: "manual",
+              x: baseX + 260,
+              y: baseY + 120,
+            },
+          }
+        : {}),
     };
   };
 
@@ -207,7 +222,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
         onOpenDocument={isAdminMode ? (() => setSelected("document")) : (() => {})}
         pan={true}
         zoom={true}
-        draggable={isAdminMode}
+        draggable={isAdminMode && data?.document?.layoutMode !== "free"}
         contentEditable={isAdminMode}
       />
       {contextMenuStyle && (

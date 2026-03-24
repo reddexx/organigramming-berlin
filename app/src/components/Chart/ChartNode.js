@@ -11,14 +11,9 @@ import PropTypes from "prop-types";
 import {
   dragNodeService,
   selectNodeService,
-  getContrastTextColor,
-  getHalfData,
-  computeBackgroundColor,
 } from "../../services/service";
 import "./ChartNode.scss";
-
-import ChartNodePositions from "./ChartNodePositions";
-import ChartNodeDepartments from "./ChartNodeDepartments";
+import ChartNodeCard from "./ChartNodeCard";
 
 const propTypes = {
   props: PropTypes.object,
@@ -30,9 +25,7 @@ const propTypes = {
   onClickNode: PropTypes.func,
   onContextMenu: PropTypes.func,
   onDragNode: PropTypes.func,
-  onNodePositionChange: PropTypes.func,
   onAddInitNode: PropTypes.func,
-  layoutDragMode: PropTypes.bool,
   contentEditable: PropTypes.bool,
 };
 
@@ -40,7 +33,6 @@ const defaultProps = {
   draggable: false,
   collapsible: true,
   multipleSelect: true,
-  layoutDragMode: false,
   contentEditable: true,
 };
 
@@ -55,21 +47,17 @@ const ChartNode = forwardRef(
       onClickNode,
       onContextMenu,
       onDragNode,
-      onNodePositionChange,
       level,
       onAddInitNode,
-      layoutDragMode,
       contentEditable,
     },
     ref
   ) => {
     const node = useRef();
     const innerRef = useRef();
-    const positionDragRef = useRef(null);
     const [allowedDrop, setAllowedDrop] = useState(false);
     const [selected, setSelected] = useState(false);
     const [ds, setDs] = useState(data);
-    const [positionDragging, setPositionDragging] = useState(false);
 
     useImperativeHandle(ref, () => ({
       demoDragMode: (enable, nodeId = "") => {
@@ -88,73 +76,6 @@ const ChartNode = forwardRef(
     useEffect(() => {
       setDs(data);
     }, [data]);
-
-    useEffect(() => {
-      if (!positionDragging) {
-        return undefined;
-      }
-
-      const handleMouseMove = (event) => {
-        const dragState = positionDragRef.current;
-        if (!dragState) {
-          return;
-        }
-
-        const nextOffsetX = Math.round(
-          dragState.initialOffsetX + (event.clientX - dragState.startX)
-        );
-        const nextOffsetY = Math.round(
-          dragState.initialOffsetY + (event.clientY - dragState.startY)
-        );
-
-        positionDragRef.current = {
-          ...dragState,
-          currentOffsetX: nextOffsetX,
-          currentOffsetY: nextOffsetY,
-        };
-
-        setDs((prev) => ({
-          ...prev,
-          layout: {
-            ...(prev.layout || {}),
-            offsetX: nextOffsetX,
-            offsetY: nextOffsetY,
-          },
-        }));
-      };
-
-      const finishPositionDrag = async () => {
-        const dragState = positionDragRef.current;
-        positionDragRef.current = null;
-        setPositionDragging(false);
-        onDragNode(false);
-
-        if (!dragState) {
-          return;
-        }
-
-        if (
-          typeof onNodePositionChange === "function" &&
-          (dragState.initialOffsetX !== dragState.currentOffsetX ||
-            dragState.initialOffsetY !== dragState.currentOffsetY)
-        ) {
-          await onNodePositionChange(dragState.nodeId, {
-            offsetX: dragState.currentOffsetX,
-            offsetY: dragState.currentOffsetY,
-          });
-        }
-      };
-
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", finishPositionDrag);
-      window.addEventListener("blur", finishPositionDrag);
-
-      return () => {
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", finishPositionDrag);
-        window.removeEventListener("blur", finishPositionDrag);
-      };
-    }, [onDragNode, onNodePositionChange, positionDragging]);
 
     useEffect(() => {
       const subs1 = dragNodeService.getDragInfo().subscribe((draggedInfo) => {
@@ -250,56 +171,8 @@ const ChartNode = forwardRef(
       onContextMenu(e);
     };
 
-    const startPositionDragHandler = (event) => {
-      if (
-        event.button !== 0 ||
-        !layoutDragMode ||
-        !contentEditable ||
-        ds.layout?.style === "root" ||
-        event.target.closest("button, a, input, textarea, select, label")
-      ) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      const initialOffsetX = ds?.layout?.offsetX || 0;
-      const initialOffsetY = ds?.layout?.offsetY || 0;
-
-      positionDragRef.current = {
-        nodeId: ds.id,
-        startX: event.clientX,
-        startY: event.clientY,
-        initialOffsetX,
-        initialOffsetY,
-        currentOffsetX: initialOffsetX,
-        currentOffsetY: initialOffsetY,
-      };
-
-      if (onClickNode) {
-        onClickNode(ds);
-      }
-
-      selectNodeService.sendSelectedNodeInfo(ds.id);
-      onDragNode(true);
-      setPositionDragging(true);
-    };
-
     return (
-      <li
-        className={"oc-hierarchy level-" + level}
-        style={{
-          transform:
-            ds?.layout?.offsetX || ds?.layout?.offsetY
-              ? `translate(${ds.layout?.offsetX || 0}px, ${ds.layout?.offsetY || 0}px)`
-              : "",
-          zIndex:
-            positionDragging || ds?.layout?.offsetX || ds?.layout?.offsetY
-              ? 2
-              : undefined,
-        }}
-      >
+      <li className={"oc-hierarchy level-" + level}>
         <div
           id={ds.id}
           ref={node}
@@ -307,7 +180,6 @@ const ChartNode = forwardRef(
             "oc-node " +
             (allowedDrop ? " allowedDrop" : "") +
             (selected ? " selected" : "") +
-            (positionDragging ? " position-dragging" : "") +
             (ds.layout?.style ? " " + ds.layout?.style : "") +
             (ds.organisations && ds.organisations.length > 0
               ? ds.organisations.length > 1
@@ -315,15 +187,7 @@ const ChartNode = forwardRef(
                 : " has-child"
               : " end-node")
           }
-          draggable={
-            ds.layout?.style !== "root" &&
-            draggable &&
-            !positionDragging &&
-            !layoutDragMode
-              ? true
-              : false
-          }
-          onMouseDown={ds.layout?.style !== "root" ? startPositionDragHandler : null}
+          draggable={ds.layout?.style !== "root" && draggable ? true : false}
           onClick={ds.layout?.style !== "root" ? clickNodeHandler : null}
           onDragStart={ds.layout?.style !== "root" && draggable ? dragStartHandler : null}
           onDragOver={dragOverHandler}
@@ -333,207 +197,7 @@ const ChartNode = forwardRef(
             ds.layout?.style !== "root" ? contextMenuHandler : null
           }
         >
-          <div
-            className={`oc-container${
-              ds.layout?.grid === "grid2" ? " grid" : ""
-            }`}
-            style={{
-              backgroundColor:
-                ds?.layout && ds.layout?.bgColor ? ds.layout?.bgColor : "",
-              width: ds?.layout?.nodeWidth ? `${ds.layout.nodeWidth}px` : "",
-              minHeight:
-                ds?.layout?.nodeMinHeight && ds.layout.nodeMinHeight > 0
-                  ? `${ds.layout.nodeMinHeight}px`
-                  : "",
-            }}
-          >
-            <div
-              className="oc-heading"
-              style={{
-                backgroundColor:
-                  ds.layout && ds.layout?.bgStyle === "default"
-                    ? ds.layout?.bgColor
-                    : "",
-                backgroundImage:
-                  ds.layout &&
-                  ds.layout?.bgColor &&
-                  ds.layout?.bgStyle === "half"
-                    ? `linear-gradient(to bottom left, ${computeBackgroundColor(
-                        ds.layout?.bgColor
-                      )} 50%,${ds.layout.bgColor} 50%)`
-                    : "",
-                color: `${getContrastTextColor(ds.layout?.bgColor)}`,
-              }}
-            >
-              <h1>{ds.name}</h1>
-              <h3 style={{fontStyle: "normal", fontWeight: 300 }}>
-                {ds.purpose}
-              </h3>
-              {ds.type && (
-                <h3
-                  className="text-end"
-                  style={{
-                    fontStyle: "normal",
-                  }}
-                >
-                  <span>
-                    {ds.type}
-                    {(ds.altName) ? ` · ${ds.altName}` : ""}
-                  </span>
-                </h3>
-              )}
-            </div>
-            {(ds.departments || ds.positions || ds.contact || ds.address) && (
-              <div className={`oc-content${ds.avatar ? " has-avatar" : ""}`}>
-                {ds.avatar && (
-                  <div className="oc-avatar">
-                    <img src={ds.avatar} alt="avatar" />
-                  </div>
-                )}
-                {ds.positions && ds.layout?.grid === "grid2" && (
-                  <div className="grid-container">
-                    <ChartNodePositions
-                      ds={ds}
-                      data={data}
-                      positions={getHalfData(data.positions, "left")}
-                    />
-
-                    <ChartNodePositions
-                      ds={ds}
-                      data={data}
-                      positions={getHalfData(data.positions, "right")}
-                    />
-                  </div>
-                )}
-                {ds.positions &&
-                  (!ds.layout?.grid || ds.layout?.grid === "none") && (
-                    <ChartNodePositions
-                      ds={ds}
-                      data={data}
-                      positions={data.positions}
-                    />
-                  )}
-                {/* {ds.departments && ds.departments.length > 0 && (
-                  <hr className="mb-2"></hr>
-                )} */}
-
-                {ds.departments && ds.layout?.grid === "grid2" && (
-                  <div className="grid-container">
-                    <ChartNodeDepartments
-                      ds={ds}
-                      data={data}
-                      departments={getHalfData(data.departments, "left")}
-                    />
-
-                    <ChartNodeDepartments
-                      ds={ds}
-                      data={data}
-                      departments={getHalfData(data.departments, "right")}
-                    />
-                  </div>
-                )}
-                {(!ds.layout?.grid || ds.layout?.grid === "none") && (
-                  <ChartNodeDepartments
-                    ds={ds}
-                    data={data}
-                    departments={data.departments}
-                  />
-                )}
-
-                {ds.contact && (
-                  <ul className="contact">
-                    {ds.contact.telephone && (
-                      <li>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          fill="currentColor"
-                          className="me-1 bi bi-telephone"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.568 17.568 0 0 0 4.168 6.608 17.569 17.569 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328zM1.884.511a1.745 1.745 0 0 1 2.612.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z" />
-                        </svg>
-                        {ds.contact.telephone}
-                      </li>
-                    )}
-                    {ds.contact.fax && (
-                      <li>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          fill="currentColor"
-                          className="me-1 bi bi-printer"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" />
-                          <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z" />
-                        </svg>
-                        {ds.contact.fax}
-                      </li>
-                    )}
-                    {ds.contact.email && (
-                      <li>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          fill="currentColor"
-                          className="me-1 bi bi-envelope"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z" />
-                        </svg>
-                        {ds.contact.email}
-                      </li>
-                    )}
-                    {ds.contact.website && (
-                      <li>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          fill="currentColor"
-                          className="me-1 bi bi-link-45deg"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z" />
-                          <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z" />
-                        </svg>
-                        {ds.contact.website}
-                      </li>
-                    )}
-                  </ul>
-                )}
-
-                {(ds?.address?.street || ds.address?.city) ? (
-                  <div className="address">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="10"
-                      height="10"
-                      fill="currentColor"
-                      className="me-1 bi bi-signpost"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M7 1.414V4H2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h5v6h2v-6h3.532a1 1 0 0 0 .768-.36l1.933-2.32a.5.5 0 0 0 0-.64L13.3 4.36a1 1 0 0 0-.768-.36H9V1.414a1 1 0 0 0-2 0zM12.532 5l1.666 2-1.666 2H2V5h10.532z" />
-                    </svg>
-                    {ds?.address?.street} {ds?.address?.housenumber && " "}
-                    {ds?.address?.housenumber}
-                    {ds?.address?.building && " "}
-                    {ds?.address?.building}
-                    {ds?.address?.room && "-"}
-                    {ds?.address?.room}
-                    {ds?.address?.zipCode && ", "}
-                    {ds?.address?.zipCode}
-                    {ds?.address?.city && " "}
-                    {ds?.address?.city}
-                  </div>
-                ):""}
-              </div>
-            )}
-          </div>
+          <ChartNodeCard data={ds} />
         </div>
         {ds.organisations && ds.organisations.length > 0 ? (
           // <Droppable
@@ -570,9 +234,6 @@ const ChartNode = forwardRef(
                 onClickNode={onClickNode}
                 onContextMenu={onContextMenu}
                 onDragNode={onDragNode}
-                onNodePositionChange={onNodePositionChange}
-                contentEditable={contentEditable}
-                layoutDragMode={layoutDragMode}
               />
             ))}
             {/* {provided.placeholder} */}

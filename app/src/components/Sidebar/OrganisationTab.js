@@ -177,13 +177,19 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
           "ui:widget": "range",
           "ui:help": "Minimale Höhe der Box in Pixeln, 0 = automatisch",
         },
-        offsetX: {
-          "ui:widget": "range",
-          "ui:help": "Horizontale Verschiebung im Raster",
+        positionMode: {
+          "ui:widget": "radio",
+          "ui:options": {
+            inline: true,
+          },
         },
-        offsetY: {
-          "ui:widget": "range",
-          "ui:help": "Vertikale Verschiebung im Raster",
+        x: {
+          "ui:help": "Horizontale Position im freien Layout",
+          "ui:disabled": formData.current?.layout?.positionMode !== "manual",
+        },
+        y: {
+          "ui:help": "Vertikale Position im freien Layout",
+          "ui:disabled": formData.current?.layout?.positionMode !== "manual",
         },
       },
       organisations: {
@@ -304,6 +310,10 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       current: {
         ...e.formData.current,
         linkedChartId: e.formData.current.linkedChartId || "",
+        layout: {
+          ...(e.formData.current.layout || {}),
+          positionMode: e.formData.current?.layout?.positionMode || "auto",
+        },
       },
     };
 
@@ -326,11 +336,26 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   };
 
   const getNewNode = () => {
+    const isFreeLayout = dsDigger?.ds?.document?.layoutMode === "free";
+    const selectedLayout = selected?.layout || {};
+    const baseX = Number.isFinite(selectedLayout.x) ? selectedLayout.x : 80;
+    const baseY = Number.isFinite(selectedLayout.y) ? selectedLayout.y : 40;
+
     return {
       type: "",
       name: "Organisation",
       id: "n" + uuidv4(),
       uri: { uri: getURI("organisation") },
+      ...(isFreeLayout
+        ? {
+            layout: {
+              style: "default",
+              positionMode: "manual",
+              x: baseX + 260,
+              y: baseY + 120,
+            },
+          }
+        : {}),
     };
   };
   const addSiblingNode = async () => {

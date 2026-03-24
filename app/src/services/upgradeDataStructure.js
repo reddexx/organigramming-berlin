@@ -141,12 +141,16 @@ function addNewPropsToOrgs(data) {
       org.layout.nodeMinHeight = 0;
     }
 
-    if (org.layout.offsetX === undefined) {
-      org.layout.offsetX = 0;
+    if (org.layout.positionMode === undefined) {
+      org.layout.positionMode = "auto";
     }
 
-    if (org.layout.offsetY === undefined) {
-      org.layout.offsetY = 0;
+    if (org.layout.x === undefined) {
+      org.layout.x = 0;
+    }
+
+    if (org.layout.y === undefined) {
+      org.layout.y = 0;
     }
 
     if (!org?.background && !org?.layout) {
@@ -228,6 +232,10 @@ export const upgradeDataStructure = (data) => {
 
   if (data.document?.isMainChart === undefined) {
     data.document.isMainChart = false;
+  }
+
+  if (data.document?.layoutMode === undefined) {
+    data.document.layoutMode = "tree";
   }
 
   // if doc has prop uriSameAs -> move it to sameAsUris
