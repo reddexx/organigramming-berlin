@@ -18,6 +18,7 @@ import { toPng, toBlob, toJpeg, toSvg } from "html-to-image";
 import jsPDF from "jspdf";
 import ChartNode from "./ChartNode";
 import ChartEdges from "./ChartEdges";
+import DrawCanvas from "./DrawCanvas";
 import "./ChartContainer.scss";
 import { exportRDF } from "../../services/exportRDF";
 
@@ -108,6 +109,7 @@ const ChartContainer = forwardRef(
     const [sizeWarning, setSizeWarning] = useState(false);
     const [paperSize, setPaperSize] = useState("");
     const [layoutDragMode, setLayoutDragMode] = useState(false);
+    const [drawioMode, setDrawioMode] = useState(false);
 
     const [node, setNode] = useState({
       id: "n-root",
@@ -661,6 +663,13 @@ const ChartContainer = forwardRef(
                     />
                   </svg>
                 </Button>
+                <Button
+                  onClick={() => setDrawioMode((p) => !p)}
+                  title={drawioMode ? "Draw-Modus verlassen" : "Draw-Modus aktivieren"}
+                  variant={drawioMode ? "primary" : "secondary"}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-vector-pen" viewBox="0 0 16 16"><path d="M9.669.864 8.058 2.475l5.657 5.657 1.611-1.611A1 1 0 0 0 15 5.121L9.669.864zM8.06 3.086 1.5 9.646V13h3.354l6.56-6.56L8.06 3.086z"/></svg>
+                </Button>
               )}
             </ButtonGroup>
           </div>
@@ -764,6 +773,7 @@ const ChartContainer = forwardRef(
               )}
               <div className="chart-container">
                 <ul className="chart" style={{ transform: chartTransform }}>
+                  {/* keep original hierarchical view rendered — DrawCanvas overlays when active */}
                   <ChartNode
                     ref={topNode}
                     data={node}
@@ -783,6 +793,7 @@ const ChartContainer = forwardRef(
                     contentEditable={contentEditable}
                   />
                 </ul>
+                {drawioMode && <DrawCanvas node={node} onNodePositionChange={changeNodePosition} />}
               </div>
               {data.document.note && (
                 <div className="note-container">
