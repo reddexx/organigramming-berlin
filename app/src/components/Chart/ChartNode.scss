@@ -403,6 +403,16 @@
 
   .chart-container {
     position: relative;
+    /* overlay for programmatically drawn orthogonal connectors */
+    .oc-edges {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
     ul.sub-organisations.horizontal {
       > li {
         position: relative;

@@ -17,6 +17,7 @@ import { toPng, toBlob, toJpeg, toSvg } from "html-to-image";
 // import { elementToSVG, inlineResources } from "dom-to-svg";
 import jsPDF from "jspdf";
 import ChartNode from "./ChartNode";
+import ChartEdges from "./ChartEdges";
 import "./ChartContainer.scss";
 import { exportRDF } from "../../services/exportRDF";
 
@@ -781,6 +782,7 @@ const ChartContainer = forwardRef(
                     contentEditable={contentEditable}
                   />
                 </ul>
+                <ChartEdges node={node} paperRef={paper} />
               </div>
               {data.document.note && (
                 <div className="note-container">
