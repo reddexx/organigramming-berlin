@@ -148,6 +148,20 @@
               "minimum": 0,
               "maximum": 640
             },
+            "offsetX": {
+              "title": "Position X",
+              "type": "integer",
+              "default": 0,
+              "minimum": -400,
+              "maximum": 400
+            },
+            "offsetY": {
+              "title": "Position Y",
+              "type": "integer",
+              "default": 0,
+              "minimum": -300,
+              "maximum": 300
+            },
             "grid": {
               "title": "Anordnung",
               "type": "string",

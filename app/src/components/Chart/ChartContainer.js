@@ -106,6 +106,7 @@ const ChartContainer = forwardRef(
     const [exporting, setExporting] = useState(false);
     const [sizeWarning, setSizeWarning] = useState(false);
     const [paperSize, setPaperSize] = useState("");
+    const [layoutDragMode, setLayoutDragMode] = useState(false);
 
     const [node, setNode] = useState({
       id: "n-root",
@@ -145,6 +146,25 @@ const ChartContainer = forwardRef(
       await dsDigger.removeNode(draggedItemData.id);
       await dsDigger.addChildren(dropTargetId, draggedItemData);
       sendDataUp({ ...data, organisations: [...dsDigger.ds.organisations] });
+    };
+
+    const changeNodePosition = async (nodeId, nextPosition) => {
+      if (!nodeId) {
+        return;
+      }
+
+      const targetNode = await dsDigger.findNodeById(nodeId);
+      targetNode.layout = {
+        ...(targetNode.layout || {}),
+        offsetX: nextPosition?.offsetX || 0,
+        offsetY: nextPosition?.offsetY || 0,
+      };
+
+      sendDataUp({ ...data, organisations: [...dsDigger.ds.organisations] });
+
+      if (contentEditable && typeof onClickNode === "function") {
+        onClickNode({ ...targetNode });
+      }
     };
 
     const clickChartHandler = (event) => {
@@ -551,6 +571,7 @@ const ChartContainer = forwardRef(
             containerClass +
             (dragging ? " dragging" : "") +
             (panning ? " panning" : "") +
+            (layoutDragMode ? " layout-drag-mode" : "") +
             (exporting ? "exporting" : "")
           }
           onWheel={zoom ? zoomHandler : undefined}
@@ -615,6 +636,31 @@ const ChartContainer = forwardRef(
                   />
                 </svg>
               </Button>
+              {contentEditable && (
+                <Button
+                  onClick={() => setLayoutDragMode((prev) => !prev)}
+                  title={
+                    layoutDragMode
+                      ? "Layout-Modus deaktivieren"
+                      : "Layout-Modus aktivieren"
+                  }
+                  variant={layoutDragMode ? "primary" : "secondary"}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    className="bi bi-arrows-move"
+                    viewBox="0 0 16 16"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8 0a.5.5 0 0 1 .5.5v2.793l1.146-1.147a.5.5 0 1 1 .708.708L8.5 4.707V5.5a.5.5 0 0 1-1 0v-.793L5.646 2.854a.5.5 0 1 1 .708-.708L7.5 3.293V.5A.5.5 0 0 1 8 0zM3.293 7.5.5 7.5a.5.5 0 0 0 0 1h2.793L2.146 9.646a.5.5 0 1 0 .708.708L4.707 8.5H5.5a.5.5 0 0 0 0-1h-.793L2.854 5.646a.5.5 0 1 0-.708.708L3.293 7.5zm9.207 0H15.5a.5.5 0 0 1 0 1h-2.793l1.147 1.146a.5.5 0 0 1-.708.708L11.293 8.5H10.5a.5.5 0 0 1 0-1h.793l1.853-1.854a.5.5 0 1 1 .708.708L12.5 7.5zM8 10a.5.5 0 0 1 .5.5v2.793l1.146-1.147a.5.5 0 0 1 .708.708l-1.853 1.853v.793a.5.5 0 0 1-1 0v-.793l-1.854-1.853a.5.5 0 0 1 .708-.708L7.5 13.293V10.5A.5.5 0 0 1 8 10z"
+                    />
+                  </svg>
+                </Button>
+              )}
             </ButtonGroup>
           </div>
 
@@ -729,7 +775,9 @@ const ChartContainer = forwardRef(
                     onClickNode={onClickNode}
                     onContextMenu={onContextMenu}
                     onDragNode={onDragNode}
+                    onNodePositionChange={changeNodePosition}
                     onAddInitNode={onAddInitNode}
+                    layoutDragMode={layoutDragMode}
                     contentEditable={contentEditable}
                   />
                 </ul>

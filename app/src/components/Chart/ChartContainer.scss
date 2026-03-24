@@ -267,6 +267,22 @@
       }
     }
   }
+
+  &.layout-drag-mode {
+    .editor {
+      .paper {
+        cursor: default;
+      }
+
+      ul li .oc-node:not(.root) {
+        cursor: grab;
+      }
+
+      ul li .oc-node.position-dragging {
+        cursor: grabbing;
+      }
+    }
+  }
 }
 
 .oc-mask {

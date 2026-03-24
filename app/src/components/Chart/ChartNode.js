@@ -30,7 +30,9 @@ const propTypes = {
   onClickNode: PropTypes.func,
   onContextMenu: PropTypes.func,
   onDragNode: PropTypes.func,
+  onNodePositionChange: PropTypes.func,
   onAddInitNode: PropTypes.func,
+  layoutDragMode: PropTypes.bool,
   contentEditable: PropTypes.bool,
 };
 
@@ -38,6 +40,7 @@ const defaultProps = {
   draggable: false,
   collapsible: true,
   multipleSelect: true,
+  layoutDragMode: false,
   contentEditable: true,
 };
 
@@ -52,17 +55,21 @@ const ChartNode = forwardRef(
       onClickNode,
       onContextMenu,
       onDragNode,
+      onNodePositionChange,
       level,
       onAddInitNode,
+      layoutDragMode,
       contentEditable,
     },
     ref
   ) => {
     const node = useRef();
     const innerRef = useRef();
+    const positionDragRef = useRef(null);
     const [allowedDrop, setAllowedDrop] = useState(false);
     const [selected, setSelected] = useState(false);
     const [ds, setDs] = useState(data);
+    const [positionDragging, setPositionDragging] = useState(false);
 
     useImperativeHandle(ref, () => ({
       demoDragMode: (enable, nodeId = "") => {
@@ -81,6 +88,73 @@ const ChartNode = forwardRef(
     useEffect(() => {
       setDs(data);
     }, [data]);
+
+    useEffect(() => {
+      if (!positionDragging) {
+        return undefined;
+      }
+
+      const handleMouseMove = (event) => {
+        const dragState = positionDragRef.current;
+        if (!dragState) {
+          return;
+        }
+
+        const nextOffsetX = Math.round(
+          dragState.initialOffsetX + (event.clientX - dragState.startX)
+        );
+        const nextOffsetY = Math.round(
+          dragState.initialOffsetY + (event.clientY - dragState.startY)
+        );
+
+        positionDragRef.current = {
+          ...dragState,
+          currentOffsetX: nextOffsetX,
+          currentOffsetY: nextOffsetY,
+        };
+
+        setDs((prev) => ({
+          ...prev,
+          layout: {
+            ...(prev.layout || {}),
+            offsetX: nextOffsetX,
+            offsetY: nextOffsetY,
+          },
+        }));
+      };
+
+      const finishPositionDrag = async () => {
+        const dragState = positionDragRef.current;
+        positionDragRef.current = null;
+        setPositionDragging(false);
+        onDragNode(false);
+
+        if (!dragState) {
+          return;
+        }
+
+        if (
+          typeof onNodePositionChange === "function" &&
+          (dragState.initialOffsetX !== dragState.currentOffsetX ||
+            dragState.initialOffsetY !== dragState.currentOffsetY)
+        ) {
+          await onNodePositionChange(dragState.nodeId, {
+            offsetX: dragState.currentOffsetX,
+            offsetY: dragState.currentOffsetY,
+          });
+        }
+      };
+
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", finishPositionDrag);
+      window.addEventListener("blur", finishPositionDrag);
+
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", finishPositionDrag);
+        window.removeEventListener("blur", finishPositionDrag);
+      };
+    }, [onDragNode, onNodePositionChange, positionDragging]);
 
     useEffect(() => {
       const subs1 = dragNodeService.getDragInfo().subscribe((draggedInfo) => {
@@ -176,6 +250,42 @@ const ChartNode = forwardRef(
       onContextMenu(e);
     };
 
+    const startPositionDragHandler = (event) => {
+      if (
+        event.button !== 0 ||
+        !layoutDragMode ||
+        !contentEditable ||
+        ds.layout?.style === "root" ||
+        event.target.closest("button, a, input, textarea, select, label")
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const initialOffsetX = ds?.layout?.offsetX || 0;
+      const initialOffsetY = ds?.layout?.offsetY || 0;
+
+      positionDragRef.current = {
+        nodeId: ds.id,
+        startX: event.clientX,
+        startY: event.clientY,
+        initialOffsetX,
+        initialOffsetY,
+        currentOffsetX: initialOffsetX,
+        currentOffsetY: initialOffsetY,
+      };
+
+      if (onClickNode) {
+        onClickNode(ds);
+      }
+
+      selectNodeService.sendSelectedNodeInfo(ds.id);
+      onDragNode(true);
+      setPositionDragging(true);
+    };
+
     return (
       <li className={"oc-hierarchy level-" + level}>
         <div
@@ -185,6 +295,7 @@ const ChartNode = forwardRef(
             "oc-node " +
             (allowedDrop ? " allowedDrop" : "") +
             (selected ? " selected" : "") +
+            (positionDragging ? " position-dragging" : "") +
             (ds.layout?.style ? " " + ds.layout?.style : "") +
             (ds.organisations && ds.organisations.length > 0
               ? ds.organisations.length > 1
@@ -192,7 +303,29 @@ const ChartNode = forwardRef(
                 : " has-child"
               : " end-node")
           }
-          draggable={ds.layout?.style !== "root" && draggable ? true : false}
+          style={{
+            transform:
+              ds?.layout?.offsetX || ds?.layout?.offsetY
+                ? `translate(${ds.layout?.offsetX || 0}px, ${ds.layout?.offsetY || 0}px)`
+                : "",
+            zIndex:
+              ds?.layout?.offsetX || ds?.layout?.offsetY
+                ? 2
+                : undefined,
+          }}
+          draggable={
+            ds.layout?.style !== "root" &&
+            draggable &&
+            !positionDragging &&
+            !layoutDragMode
+              ? true
+              : false
+          }
+          onMouseDown={
+            ds.layout?.style !== "root" && layoutDragMode
+              ? startPositionDragHandler
+              : null
+          }
           onClick={ds.layout?.style !== "root" ? clickNodeHandler : null}
           onDragStart={ds.layout?.style !== "root" && draggable ? dragStartHandler : null}
           onDragOver={dragOverHandler}
@@ -439,6 +572,9 @@ const ChartNode = forwardRef(
                 onClickNode={onClickNode}
                 onContextMenu={onContextMenu}
                 onDragNode={onDragNode}
+                onNodePositionChange={onNodePositionChange}
+                contentEditable={contentEditable}
+                layoutDragMode={layoutDragMode}
               />
             ))}
             {/* {provided.placeholder} */}

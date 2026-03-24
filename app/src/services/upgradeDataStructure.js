@@ -141,6 +141,14 @@ function addNewPropsToOrgs(data) {
       org.layout.nodeMinHeight = 0;
     }
 
+    if (org.layout.offsetX === undefined) {
+      org.layout.offsetX = 0;
+    }
+
+    if (org.layout.offsetY === undefined) {
+      org.layout.offsetY = 0;
+    }
+
     if (!org?.background && !org?.layout) {
       org.background = {
         color: "",

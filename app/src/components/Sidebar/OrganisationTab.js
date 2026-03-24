@@ -177,6 +177,14 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
           "ui:widget": "range",
           "ui:help": "Minimale Höhe der Box in Pixeln, 0 = automatisch",
         },
+        offsetX: {
+          "ui:widget": "range",
+          "ui:help": "Horizontale Verschiebung im Raster",
+        },
+        offsetY: {
+          "ui:widget": "range",
+          "ui:help": "Vertikale Verschiebung im Raster",
+        },
       },
       organisations: {
         "ui:headless": true,
