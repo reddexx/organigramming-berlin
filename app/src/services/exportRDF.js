@@ -269,8 +269,7 @@ function getOrgData(d, excludePersonalData, parentOrg = null, isMainOrg = false)
         ...(aD.street && {
           "vcard:street-address": `${aD?.building ? "Firma: " + aD?.building + " | " : ""}${
             aD?.street
-          } ${aD?.housenumber}${
-          }${aD?.room ? " | Raum: " + aD?.room : ""}`,
+          } ${aD?.housenumber || ""}${aD?.room ? " | Raum: " + aD?.room : ""}`,
         }),
         ...(aD.zipCode && { "vcard:postal-code": aD.zipCode }),
         ...(aD.city && { "vcard:locality": aD.city }),
