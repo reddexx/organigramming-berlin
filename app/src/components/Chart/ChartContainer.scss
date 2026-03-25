@@ -277,6 +277,12 @@
             stroke-width: 2.5;
           }
         }
+
+        .alignment-guide {
+          stroke: rgba($primary, 0.55);
+          stroke-width: 1.5;
+          stroke-dasharray: 6 6;
+        }
       }
 
       .free-layout-list {
@@ -291,6 +297,8 @@
         .free-layout-item {
           position: absolute;
           margin: 0;
+          width: fit-content;
+          height: fit-content;
 
           &::before,
           > .oc-node::before,
@@ -299,6 +307,7 @@
           }
 
           > .oc-node {
+            display: inline-block;
             margin: 0;
             user-select: none;
             cursor: grab;

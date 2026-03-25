@@ -30,6 +30,8 @@ const ANCHOR_OFFSET = 24;
 const OBSTACLE_PADDING = 18;
 const ANCHOR_SIDES = ["top", "right", "bottom", "left"];
 const CONNECTOR_EDGE_OVERLAP = 4;
+const GRID_SIZE = 24;
+const ALIGNMENT_THRESHOLD = 8;
 
 const flattenNodes = (nodes, parentId = null, level = 1, result = []) => {
   (nodes || []).forEach((node) => {
@@ -174,6 +176,177 @@ const toFullRect = (rect) => ({
   right: rect.left + rect.width,
   bottom: rect.top + rect.height,
 });
+
+const snapToGrid = (value) => Math.max(0, Math.round(value / GRID_SIZE) * GRID_SIZE);
+
+const getRectMetrics = (rect) => ({
+  left: rect.left,
+  centerX: rect.left + rect.width / 2,
+  right: rect.left + rect.width,
+  top: rect.top,
+  centerY: rect.top + rect.height / 2,
+  bottom: rect.top + rect.height,
+});
+
+const getBestAlignment = (movingValue, otherValue, nextPosition, axis, otherRect) => {
+  const distance = Math.abs(movingValue - otherValue);
+
+  if (distance > ALIGNMENT_THRESHOLD) {
+    return null;
+  }
+
+  return {
+    distance,
+    axis,
+    value: otherValue,
+    otherRect,
+    nextPosition,
+  };
+};
+
+const getDragSnapResult = (nodeId, rawPosition, nodeRects) => {
+  const movingRect = nodeRects[nodeId];
+
+  if (!movingRect) {
+    return {
+      position: {
+        x: snapToGrid(rawPosition.x),
+        y: snapToGrid(rawPosition.y),
+      },
+      guides: [],
+    };
+  }
+
+  let nextPosition = {
+    x: snapToGrid(rawPosition.x),
+    y: snapToGrid(rawPosition.y),
+  };
+
+  const snappedRect = {
+    left: nextPosition.x,
+    top: nextPosition.y,
+    width: movingRect.width,
+    height: movingRect.height,
+  };
+  const movingMetrics = getRectMetrics(snappedRect);
+  let bestVerticalGuide = null;
+  let bestHorizontalGuide = null;
+
+  Object.entries(nodeRects).forEach(([otherNodeId, otherRect]) => {
+    if (otherNodeId === nodeId) {
+      return;
+    }
+
+    const otherMetrics = getRectMetrics(otherRect);
+    const verticalCandidates = [
+      getBestAlignment(
+        movingMetrics.left,
+        otherMetrics.left,
+        { ...nextPosition, x: otherMetrics.left },
+        "vertical",
+        otherRect
+      ),
+      getBestAlignment(
+        movingMetrics.centerX,
+        otherMetrics.centerX,
+        { ...nextPosition, x: otherMetrics.centerX - movingRect.width / 2 },
+        "vertical",
+        otherRect
+      ),
+      getBestAlignment(
+        movingMetrics.right,
+        otherMetrics.right,
+        { ...nextPosition, x: otherMetrics.right - movingRect.width },
+        "vertical",
+        otherRect
+      ),
+    ].filter(Boolean);
+    const horizontalCandidates = [
+      getBestAlignment(
+        movingMetrics.top,
+        otherMetrics.top,
+        { ...nextPosition, y: otherMetrics.top },
+        "horizontal",
+        otherRect
+      ),
+      getBestAlignment(
+        movingMetrics.centerY,
+        otherMetrics.centerY,
+        { ...nextPosition, y: otherMetrics.centerY - movingRect.height / 2 },
+        "horizontal",
+        otherRect
+      ),
+      getBestAlignment(
+        movingMetrics.bottom,
+        otherMetrics.bottom,
+        { ...nextPosition, y: otherMetrics.bottom - movingRect.height },
+        "horizontal",
+        otherRect
+      ),
+    ].filter(Boolean);
+
+    const verticalMatch = verticalCandidates.sort((left, right) => left.distance - right.distance)[0];
+    const horizontalMatch = horizontalCandidates.sort((left, right) => left.distance - right.distance)[0];
+
+    if (!bestVerticalGuide || (verticalMatch && verticalMatch.distance < bestVerticalGuide.distance)) {
+      bestVerticalGuide = verticalMatch || bestVerticalGuide;
+    }
+
+    if (
+      !bestHorizontalGuide ||
+      (horizontalMatch && horizontalMatch.distance < bestHorizontalGuide.distance)
+    ) {
+      bestHorizontalGuide = horizontalMatch || bestHorizontalGuide;
+    }
+  });
+
+  if (bestVerticalGuide) {
+    nextPosition.x = Math.max(0, Math.round(bestVerticalGuide.nextPosition.x));
+  }
+
+  if (bestHorizontalGuide) {
+    nextPosition.y = Math.max(0, Math.round(bestHorizontalGuide.nextPosition.y));
+  }
+
+  const resolvedRect = {
+    left: nextPosition.x,
+    top: nextPosition.y,
+    width: movingRect.width,
+    height: movingRect.height,
+  };
+  const guides = [];
+
+  if (bestVerticalGuide) {
+    guides.push({
+      orientation: "vertical",
+      x: bestVerticalGuide.value,
+      y1: Math.min(resolvedRect.top, bestVerticalGuide.otherRect.top) - 24,
+      y2:
+        Math.max(
+          resolvedRect.top + resolvedRect.height,
+          bestVerticalGuide.otherRect.top + bestVerticalGuide.otherRect.height
+        ) + 24,
+    });
+  }
+
+  if (bestHorizontalGuide) {
+    guides.push({
+      orientation: "horizontal",
+      y: bestHorizontalGuide.value,
+      x1: Math.min(resolvedRect.left, bestHorizontalGuide.otherRect.left) - 24,
+      x2:
+        Math.max(
+          resolvedRect.left + resolvedRect.width,
+          bestHorizontalGuide.otherRect.left + bestHorizontalGuide.otherRect.width
+        ) + 24,
+    });
+  }
+
+  return {
+    position: nextPosition,
+    guides,
+  };
+};
 
 const dedupePoints = (points) => {
   return points.filter((point, index) => {
@@ -413,6 +586,7 @@ const FreeLayoutCanvas = ({
   const [draftPositions, setDraftPositions] = useState({});
   const [dragState, setDragState] = useState(null);
   const [connectorDragState, setConnectorDragState] = useState(null);
+  const [dragGuides, setDragGuides] = useState([]);
 
   const flattenedNodes = useMemo(() => flattenNodes(nodes), [nodes]);
   const autoPositions = useMemo(() => buildAutoPositions(nodes), [nodes]);
@@ -497,13 +671,18 @@ const FreeLayoutCanvas = ({
     const handleMouseMove = (event) => {
       event.preventDefault();
 
-      const nextX = Math.max(
+      const rawX = Math.max(
         0,
         Math.round(dragState.startPosition.x + event.clientX - dragState.startX)
       );
-      const nextY = Math.max(
+      const rawY = Math.max(
         0,
         Math.round(dragState.startPosition.y + event.clientY - dragState.startY)
+      );
+      const { position: snappedPosition, guides } = getDragSnapResult(
+        dragState.node.id,
+        { x: rawX, y: rawY },
+        nodeRects
       );
 
       if (
@@ -513,9 +692,10 @@ const FreeLayoutCanvas = ({
         dragMovedRef.current = true;
       }
 
+      setDragGuides(guides);
       setDraftPositions((current) => ({
         ...current,
-        [dragState.node.id]: { x: nextX, y: nextY },
+        [dragState.node.id]: snappedPosition,
       }));
     };
 
@@ -533,6 +713,7 @@ const FreeLayoutCanvas = ({
       }
 
       dragMovedRef.current = false;
+      setDragGuides([]);
       setDraftPositions((current) => {
         const nextDrafts = { ...current };
         delete nextDrafts[dragState.node.id];
@@ -543,6 +724,7 @@ const FreeLayoutCanvas = ({
     const handleWindowBlur = () => {
       setDragState(null);
       dragMovedRef.current = false;
+      setDragGuides([]);
       setDraftPositions((current) => {
         const nextDrafts = { ...current };
         delete nextDrafts[dragState.node.id];
@@ -560,7 +742,7 @@ const FreeLayoutCanvas = ({
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("blur", handleWindowBlur);
     };
-  }, [dragState, draftPositions, onUpdateNodeLayout]);
+  }, [dragState, draftPositions, nodeRects, onUpdateNodeLayout]);
 
   useEffect(() => {
     if (!connectorDragState) {
@@ -840,6 +1022,27 @@ const FreeLayoutCanvas = ({
             d={connector.d}
           />
         ))}
+        {dragGuides.map((guide) =>
+          guide.orientation === "vertical" ? (
+            <line
+              key={`vertical-${guide.x}-${guide.y1}-${guide.y2}`}
+              className="alignment-guide"
+              x1={guide.x}
+              x2={guide.x}
+              y1={guide.y1}
+              y2={guide.y2}
+            />
+          ) : (
+            <line
+              key={`horizontal-${guide.y}-${guide.x1}-${guide.x2}`}
+              className="alignment-guide"
+              x1={guide.x1}
+              x2={guide.x2}
+              y1={guide.y}
+              y2={guide.y}
+            />
+          )
+        )}
         {previewConnector && <path className="preview pending" d={previewConnector} />}
       </svg>
       <ul className="free-layout-list">
@@ -855,11 +1058,12 @@ const FreeLayoutCanvas = ({
               (pendingNodeMeta.parentId === node.id || parentId === connectorDragState.nodeId)
           );
           const showAnchors =
-            selectedNodeId === node.id ||
-            isDragging ||
-            isPendingNode ||
-            isConnectableNode ||
-            isHoveredTarget;
+            contentEditable &&
+            (selectedNodeId === node.id ||
+              isDragging ||
+              isPendingNode ||
+              isConnectableNode ||
+              isHoveredTarget);
 
           return (
             <li
@@ -900,37 +1104,37 @@ const FreeLayoutCanvas = ({
                 onContextMenu={(event) => handleContextMenu(event, node)}
                 onDragStart={(event) => event.preventDefault()}
               >
-                <div
-                  className={`free-layout-anchors${
-                    showAnchors ? " visible" : ""
-                  }`}
-                >
-                  {ANCHOR_SIDES.map((side) => {
-                    const isActive =
-                      connectorDragState?.nodeId === node.id &&
-                      connectorDragState?.side === side;
-                    const isHovered =
-                      connectorDragState?.hoveredAnchor?.nodeId === node.id &&
-                      connectorDragState?.hoveredAnchor?.side === side;
+                {contentEditable && (
+                  <div
+                    className={`free-layout-anchors${showAnchors ? " visible" : ""}`}
+                  >
+                    {ANCHOR_SIDES.map((side) => {
+                      const isActive =
+                        connectorDragState?.nodeId === node.id &&
+                        connectorDragState?.side === side;
+                      const isHovered =
+                        connectorDragState?.hoveredAnchor?.nodeId === node.id &&
+                        connectorDragState?.hoveredAnchor?.side === side;
 
-                    return (
-                      <button
-                        key={side}
-                        type="button"
-                        className={`free-layout-anchor ${side}${
-                          isActive ? " active" : ""
-                        }${isConnectableNode ? " connectable" : ""}${
-                          isHovered ? " hovered" : ""
-                        }`}
-                        data-node-id={node.id}
-                        data-anchor-side={side}
-                        onMouseDown={(event) => handleAnchorMouseDown(event, nodeMeta, side)}
-                        title={`Verbindung über ${side} setzen`}
-                        aria-label={`${node.name || node.id}: Verbindung über ${side} setzen`}
-                      />
-                    );
-                  })}
-                </div>
+                      return (
+                        <button
+                          key={side}
+                          type="button"
+                          className={`free-layout-anchor ${side}${
+                            isActive ? " active" : ""
+                          }${isConnectableNode ? " connectable" : ""}${
+                            isHovered ? " hovered" : ""
+                          }`}
+                          data-node-id={node.id}
+                          data-anchor-side={side}
+                          onMouseDown={(event) => handleAnchorMouseDown(event, nodeMeta, side)}
+                          title={`Verbindung über ${side} setzen`}
+                          aria-label={`${node.name || node.id}: Verbindung über ${side} setzen`}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
                 <ChartNodeCard data={node} />
               </div>
             </li>
