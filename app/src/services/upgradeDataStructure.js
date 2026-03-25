@@ -1,6 +1,8 @@
 import initDocument from "../data/initDocument";
 import getURI from "./getURI";
 
+const CONNECTOR_ANCHOR_SIDES = ["top", "right", "bottom", "left"];
+
 function addUrisToOrgsAndEmployees(data) {
   data.organisations?.forEach((org) => {
     // add an URI to all orgs
@@ -151,6 +153,14 @@ function addNewPropsToOrgs(data) {
 
     if (org.layout.y === undefined) {
       org.layout.y = 0;
+    }
+
+    if (!CONNECTOR_ANCHOR_SIDES.includes(org.layout.connectorParentAnchor)) {
+      delete org.layout.connectorParentAnchor;
+    }
+
+    if (!CONNECTOR_ANCHOR_SIDES.includes(org.layout.connectorChildAnchor)) {
+      delete org.layout.connectorChildAnchor;
     }
 
     if (!org?.background && !org?.layout) {

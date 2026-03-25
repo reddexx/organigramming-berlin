@@ -176,6 +176,16 @@
               "minimum": 0,
               "maximum": 5000
             },
+            "connectorParentAnchor": {
+              "title": "Connector Anker Elternknoten",
+              "type": "string",
+              "enum": ["top", "right", "bottom", "left"]
+            },
+            "connectorChildAnchor": {
+              "title": "Connector Anker Kindknoten",
+              "type": "string",
+              "enum": ["top", "right", "bottom", "left"]
+            },
             "grid": {
               "title": "Anordnung",
               "type": "string",

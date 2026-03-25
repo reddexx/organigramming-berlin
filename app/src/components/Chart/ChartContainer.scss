@@ -262,6 +262,15 @@
           stroke-width: 2;
           stroke-linecap: round;
           stroke-linejoin: round;
+
+          &.manual {
+            stroke: darken($secondary, 10%);
+            stroke-width: 2.5;
+          }
+
+          &.pending {
+            stroke: $primary;
+          }
         }
       }
 
@@ -313,6 +322,7 @@
             pointer-events: none;
             opacity: 0;
             transition: opacity 120ms ease-out;
+            z-index: 2;
 
             &.visible {
               opacity: 1;
@@ -323,10 +333,29 @@
             position: absolute;
             width: 0.7rem;
             height: 0.7rem;
+            padding: 0;
             border-radius: 999px;
             background-color: $white;
             border: 2px solid $secondary;
             box-shadow: 0 0 0 2px rgba($white, 0.9);
+            pointer-events: auto;
+            cursor: crosshair;
+            appearance: none;
+
+            &.connectable {
+              border-color: $primary;
+            }
+
+            &.active {
+              background-color: $primary;
+              border-color: $primary;
+              box-shadow: 0 0 0 3px rgba($primary, 0.18);
+            }
+
+            &:focus-visible {
+              outline: 2px solid rgba($primary, 0.45);
+              outline-offset: 2px;
+            }
 
             &.top {
               top: 0;
@@ -351,6 +380,14 @@
               left: 0;
               transform: translate(-50%, -50%);
             }
+          }
+
+          > .oc-node.pending-connection .oc-container {
+            box-shadow: 0 0 0 2px rgba($primary, 0.18);
+          }
+
+          > .oc-node.connectable-connection .oc-container {
+            box-shadow: 0 0 0 2px rgba($secondary, 0.16);
           }
         }
       }

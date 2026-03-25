@@ -28,6 +28,7 @@ const START_Y = 40;
 const CANVAS_PADDING = 160;
 const ANCHOR_OFFSET = 24;
 const OBSTACLE_PADDING = 18;
+const ANCHOR_SIDES = ["top", "right", "bottom", "left"];
 
 const flattenNodes = (nodes, parentId = null, level = 1, result = []) => {
   (nodes || []).forEach((node) => {
@@ -90,6 +91,55 @@ const chooseAnchorPair = (parentRect, childRect) => {
   return deltaY >= 0
     ? { start: parentAnchors.bottom, end: childAnchors.top }
     : { start: parentAnchors.top, end: childAnchors.bottom };
+};
+
+const isValidAnchorSide = (side) => ANCHOR_SIDES.includes(side);
+
+const getConnectionAnchorPair = (childNode, parentRect, childRect) => {
+  const parentAnchors = getAnchorsFromRect(parentRect);
+  const childAnchors = getAnchorsFromRect(childRect);
+  const parentSide = childNode?.layout?.connectorParentAnchor;
+  const childSide = childNode?.layout?.connectorChildAnchor;
+
+  if (isValidAnchorSide(parentSide) && isValidAnchorSide(childSide)) {
+    return {
+      start: parentAnchors[parentSide],
+      end: childAnchors[childSide],
+      manual: true,
+    };
+  }
+
+  return {
+    ...chooseAnchorPair(parentRect, childRect),
+    manual: false,
+  };
+};
+
+const resolveConnectionSelection = (firstSelection, secondSelection, nodeMetaById) => {
+  const firstMeta = nodeMetaById[firstSelection.nodeId];
+  const secondMeta = nodeMetaById[secondSelection.nodeId];
+
+  if (!firstMeta || !secondMeta || firstSelection.nodeId === secondSelection.nodeId) {
+    return null;
+  }
+
+  if (firstMeta.parentId === secondSelection.nodeId) {
+    return {
+      childNodeId: firstSelection.nodeId,
+      parentAnchor: secondSelection.side,
+      childAnchor: firstSelection.side,
+    };
+  }
+
+  if (secondMeta.parentId === firstSelection.nodeId) {
+    return {
+      childNodeId: secondSelection.nodeId,
+      parentAnchor: firstSelection.side,
+      childAnchor: secondSelection.side,
+    };
+  }
+
+  return null;
 };
 
 const expandRect = (rect, padding) => ({
@@ -344,9 +394,18 @@ const FreeLayoutCanvas = ({
   const [nodeRects, setNodeRects] = useState({});
   const [draftPositions, setDraftPositions] = useState({});
   const [dragState, setDragState] = useState(null);
+  const [pendingAnchorSelection, setPendingAnchorSelection] = useState(null);
 
   const flattenedNodes = useMemo(() => flattenNodes(nodes), [nodes]);
   const autoPositions = useMemo(() => buildAutoPositions(nodes), [nodes]);
+  const nodeMetaById = useMemo(
+    () =>
+      flattenedNodes.reduce((result, item) => {
+        result[item.node.id] = item;
+        return result;
+      }, {}),
+    [flattenedNodes]
+  );
 
   const getPosition = (node) => {
     if (draftPositions[node.id]) {
@@ -517,17 +576,85 @@ const FreeLayoutCanvas = ({
         return null;
       }
 
-      const { start, end } = chooseAnchorPair(parentRect, childRect);
+      const { start, end, manual } = getConnectionAnchorPair(node, parentRect, childRect);
       const obstacles = Object.entries(nodeRects)
         .filter(([id]) => id !== node.id && id !== parentId)
         .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
+      const isPendingConnector =
+        pendingAnchorSelection &&
+        (pendingAnchorSelection.nodeId === node.id || pendingAnchorSelection.nodeId === parentId);
 
       return {
         id: `${parentId}-${node.id}`,
         d: createOrthogonalPath(start, end, obstacles, canvasSize),
+        manual,
+        pending: Boolean(isPendingConnector),
       };
     })
     .filter(Boolean);
+  const pendingNodeMeta = pendingAnchorSelection
+    ? nodeMetaById[pendingAnchorSelection.nodeId]
+    : null;
+
+  const handleCanvasMouseDown = (event) => {
+    if (event.target.closest(".oc-node, .free-layout-anchor")) {
+      return;
+    }
+
+    setPendingAnchorSelection(null);
+  };
+
+  const handleAnchorClick = async (event, nodeMeta, side) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!contentEditable) {
+      return;
+    }
+
+    onCloseContextMenu?.();
+    dragMovedRef.current = false;
+    suppressClickRef.current = false;
+
+    if (onClickNode) {
+      onClickNode(nodeMeta.node);
+    }
+
+    selectNodeService.sendSelectedNodeInfo(nodeMeta.node.id);
+
+    const nextSelection = { nodeId: nodeMeta.node.id, side };
+
+    if (
+      pendingAnchorSelection?.nodeId === nextSelection.nodeId &&
+      pendingAnchorSelection?.side === nextSelection.side
+    ) {
+      setPendingAnchorSelection(null);
+      return;
+    }
+
+    if (!pendingAnchorSelection) {
+      setPendingAnchorSelection(nextSelection);
+      return;
+    }
+
+    const resolvedConnection = resolveConnectionSelection(
+      pendingAnchorSelection,
+      nextSelection,
+      nodeMetaById
+    );
+
+    if (!resolvedConnection) {
+      setPendingAnchorSelection(nextSelection);
+      return;
+    }
+
+    await onUpdateNodeLayout(resolvedConnection.childNodeId, {
+      connectorParentAnchor: resolvedConnection.parentAnchor,
+      connectorChildAnchor: resolvedConnection.childAnchor,
+    });
+
+    setPendingAnchorSelection(null);
+  };
 
   const handleNodeMouseDown = (event, node) => {
     if (!contentEditable || event.button !== 0) {
@@ -550,6 +677,7 @@ const FreeLayoutCanvas = ({
     }
 
     onCloseContextMenu?.();
+    setPendingAnchorSelection(null);
     dragMovedRef.current = false;
     setDragState({
       node,
@@ -592,6 +720,7 @@ const FreeLayoutCanvas = ({
     <div
       ref={wrapperRef}
       className="free-layout-canvas"
+      onMouseDown={handleCanvasMouseDown}
       style={{
         width: `${canvasSize.width}px`,
         height: `${canvasSize.height}px`,
@@ -599,13 +728,31 @@ const FreeLayoutCanvas = ({
     >
       <svg className="free-layout-connectors" aria-hidden="true">
         {connectors.map((connector) => (
-          <path key={connector.id} d={connector.d} />
+          <path
+            key={connector.id}
+            className={`${connector.manual ? "manual" : "auto"}${
+              connector.pending ? " pending" : ""
+            }`}
+            d={connector.d}
+          />
         ))}
       </svg>
       <ul className="free-layout-list">
-        {flattenedNodes.map(({ node, level }) => {
+        {flattenedNodes.map((nodeMeta) => {
+          const { node, level, parentId } = nodeMeta;
           const position = getPosition(node);
           const isDragging = dragState?.node?.id === node.id;
+          const isPendingNode = pendingAnchorSelection?.nodeId === node.id;
+          const isConnectableNode = Boolean(
+            pendingNodeMeta &&
+              pendingAnchorSelection.nodeId !== node.id &&
+              (pendingNodeMeta.parentId === node.id || parentId === pendingAnchorSelection.nodeId)
+          );
+          const showAnchors =
+            selectedNodeId === node.id ||
+            isDragging ||
+            isPendingNode ||
+            isConnectableNode;
 
           return (
             <li
@@ -630,6 +777,8 @@ const FreeLayoutCanvas = ({
                 className={
                   "oc-node free-layout-node" +
                   (selectedNodeId === node.id ? " selected" : "") +
+                  (isPendingNode ? " pending-connection" : "") +
+                  (isConnectableNode ? " connectable-connection" : "") +
                   (node.layout?.style ? ` ${node.layout.style}` : "") +
                   (isDragging ? " position-dragging" : "") +
                   (node.organisations && node.organisations.length > 0
@@ -645,14 +794,31 @@ const FreeLayoutCanvas = ({
               >
                 <div
                   className={`free-layout-anchors${
-                    selectedNodeId === node.id || isDragging ? " visible" : ""
+                    showAnchors ? " visible" : ""
                   }`}
-                  aria-hidden="true"
                 >
-                  <span className="free-layout-anchor top" />
-                  <span className="free-layout-anchor right" />
-                  <span className="free-layout-anchor bottom" />
-                  <span className="free-layout-anchor left" />
+                  {ANCHOR_SIDES.map((side) => {
+                    const isActive =
+                      pendingAnchorSelection?.nodeId === node.id &&
+                      pendingAnchorSelection?.side === side;
+
+                    return (
+                      <button
+                        key={side}
+                        type="button"
+                        className={`free-layout-anchor ${side}${
+                          isActive ? " active" : ""
+                        }${isConnectableNode ? " connectable" : ""}`}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        onClick={(event) => handleAnchorClick(event, nodeMeta, side)}
+                        title={`Verbindung über ${side} setzen`}
+                        aria-label={`${node.name || node.id}: Verbindung über ${side} setzen`}
+                      />
+                    );
+                  })}
                 </div>
                 <ChartNodeCard data={node} />
               </div>
