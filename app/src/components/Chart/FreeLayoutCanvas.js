@@ -27,6 +27,7 @@ const START_X = 80;
 const START_Y = 40;
 const CANVAS_PADDING = 160;
 const ANCHOR_OFFSET = 24;
+const OBSTACLE_PADDING = 18;
 
 const flattenNodes = (nodes, parentId = null, level = 1, result = []) => {
   (nodes || []).forEach((node) => {
@@ -91,7 +92,72 @@ const chooseAnchorPair = (parentRect, childRect) => {
     : { start: parentAnchors.top, end: childAnchors.bottom };
 };
 
-const createOrthogonalPath = (startAnchor, endAnchor) => {
+const expandRect = (rect, padding) => ({
+  left: rect.left - padding,
+  top: rect.top - padding,
+  width: rect.width + padding * 2,
+  height: rect.height + padding * 2,
+  right: rect.left + rect.width + padding,
+  bottom: rect.top + rect.height + padding,
+});
+
+const toFullRect = (rect) => ({
+  ...rect,
+  right: rect.left + rect.width,
+  bottom: rect.top + rect.height,
+});
+
+const dedupePoints = (points) => {
+  return points.filter((point, index) => {
+    if (index === 0) {
+      return true;
+    }
+
+    const previousPoint = points[index - 1];
+    return point.x !== previousPoint.x || point.y !== previousPoint.y;
+  });
+};
+
+const segmentIntersectsRect = (startPoint, endPoint, rect) => {
+  if (startPoint.x === endPoint.x) {
+    const x = startPoint.x;
+    const minY = Math.min(startPoint.y, endPoint.y);
+    const maxY = Math.max(startPoint.y, endPoint.y);
+
+    return x >= rect.left && x <= rect.right && maxY >= rect.top && minY <= rect.bottom;
+  }
+
+  const y = startPoint.y;
+  const minX = Math.min(startPoint.x, endPoint.x);
+  const maxX = Math.max(startPoint.x, endPoint.x);
+
+  return y >= rect.top && y <= rect.bottom && maxX >= rect.left && minX <= rect.right;
+};
+
+const pathIntersectsObstacles = (points, obstacles) => {
+  for (let index = 1; index < points.length; index += 1) {
+    const startPoint = points[index - 1];
+    const endPoint = points[index];
+
+    if (startPoint.x !== endPoint.x && startPoint.y !== endPoint.y) {
+      return true;
+    }
+
+    if (obstacles.some((rect) => segmentIntersectsRect(startPoint, endPoint, rect))) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const buildPathString = (points) => {
+  return dedupePoints(points)
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
+};
+
+const createOrthogonalPath = (startAnchor, endAnchor, obstacles, canvasSize) => {
   const startLead = {
     x: startAnchor.x + startAnchor.dx * ANCHOR_OFFSET,
     y: startAnchor.y + startAnchor.dy * ANCHOR_OFFSET,
@@ -109,31 +175,118 @@ const createOrthogonalPath = (startAnchor, endAnchor) => {
   const startIsHorizontal = startAnchor.dx !== 0;
   const endIsHorizontal = endAnchor.dx !== 0;
 
+  const minObstacleLeft = obstacles.length
+    ? Math.min(...obstacles.map((rect) => rect.left))
+    : 0;
+  const maxObstacleRight = obstacles.length
+    ? Math.max(...obstacles.map((rect) => rect.right))
+    : canvasSize.width;
+  const minObstacleTop = obstacles.length
+    ? Math.min(...obstacles.map((rect) => rect.top))
+    : 0;
+  const maxObstacleBottom = obstacles.length
+    ? Math.max(...obstacles.map((rect) => rect.bottom))
+    : canvasSize.height;
+
+  const buildCandidatePoints = (strategyValue, alternateValue) => {
+    if (startIsHorizontal && endIsHorizontal) {
+      return [
+        { x: startAnchor.x, y: startAnchor.y },
+        startLead,
+        { x: strategyValue, y: startLead.y },
+        { x: strategyValue, y: endLead.y },
+        endLead,
+        { x: endAnchor.x, y: endAnchor.y },
+      ];
+    }
+
+    if (!startIsHorizontal && !endIsHorizontal) {
+      return [
+        { x: startAnchor.x, y: startAnchor.y },
+        startLead,
+        { x: startLead.x, y: strategyValue },
+        { x: endLead.x, y: strategyValue },
+        endLead,
+        { x: endAnchor.x, y: endAnchor.y },
+      ];
+    }
+
+    return [
+      { x: startAnchor.x, y: startAnchor.y },
+      startLead,
+      startIsHorizontal
+        ? { x: alternateValue, y: startLead.y }
+        : { x: startLead.x, y: alternateValue },
+      startIsHorizontal
+        ? { x: alternateValue, y: endLead.y }
+        : { x: endLead.x, y: alternateValue },
+      endLead,
+      { x: endAnchor.x, y: endAnchor.y },
+    ];
+  };
+
+  const candidateStrategies = [];
+
   if (startIsHorizontal && endIsHorizontal) {
-    const midX = Math.round((startLead.x + endLead.x) / 2);
-    points.push({ x: midX, y: startLead.y });
-    points.push({ x: midX, y: endLead.y });
+    candidateStrategies.push(Math.round((startLead.x + endLead.x) / 2));
+    candidateStrategies.push(
+      Math.max(startLead.x, endLead.x, maxObstacleRight) + CANVAS_PADDING / 3
+    );
+    candidateStrategies.push(
+      Math.min(startLead.x, endLead.x, minObstacleLeft) - CANVAS_PADDING / 3
+    );
   } else if (!startIsHorizontal && !endIsHorizontal) {
-    const midY = Math.round((startLead.y + endLead.y) / 2);
-    points.push({ x: startLead.x, y: midY });
-    points.push({ x: endLead.x, y: midY });
+    candidateStrategies.push(Math.round((startLead.y + endLead.y) / 2));
+    candidateStrategies.push(
+      Math.max(startLead.y, endLead.y, maxObstacleBottom) + CANVAS_PADDING / 3
+    );
+    candidateStrategies.push(
+      Math.min(startLead.y, endLead.y, minObstacleTop) - CANVAS_PADDING / 3
+    );
   } else {
-    points.push({ x: endLead.x, y: startLead.y });
+    candidateStrategies.push(Math.round((startLead.x + endLead.x) / 2));
+    candidateStrategies.push(Math.round((startLead.y + endLead.y) / 2));
+    candidateStrategies.push(
+      startIsHorizontal
+        ? Math.max(endLead.x, maxObstacleRight) + CANVAS_PADDING / 3
+        : Math.max(endLead.y, maxObstacleBottom) + CANVAS_PADDING / 3
+    );
+    candidateStrategies.push(
+      startIsHorizontal
+        ? Math.min(endLead.x, minObstacleLeft) - CANVAS_PADDING / 3
+        : Math.min(endLead.y, minObstacleTop) - CANVAS_PADDING / 3
+    );
+  }
+
+  const alternateStrategies = [];
+
+  if (startIsHorizontal !== endIsHorizontal) {
+    alternateStrategies.push(startIsHorizontal ? endLead.x : endLead.y);
+    alternateStrategies.push(startIsHorizontal ? startLead.x : startLead.y);
+  }
+
+  const candidates = candidateStrategies.flatMap((strategyValue) => {
+    if (startIsHorizontal === endIsHorizontal) {
+      return [buildCandidatePoints(strategyValue)];
+    }
+
+    return alternateStrategies.map((alternateValue) =>
+      buildCandidatePoints(strategyValue, alternateValue)
+    );
+  });
+
+  const clearCandidate = candidates.find(
+    (candidatePoints) => !pathIntersectsObstacles(dedupePoints(candidatePoints), obstacles)
+  );
+
+  if (clearCandidate) {
+    return buildPathString(clearCandidate);
   }
 
   points.push(endLead);
   points.push({ x: endAnchor.x, y: endAnchor.y });
 
-  const deduped = points.filter((point, index, allPoints) => {
-    if (index === 0) {
-      return true;
-    }
-
-    const previousPoint = allPoints[index - 1];
-    return point.x !== previousPoint.x || point.y !== previousPoint.y;
-  });
-
-  return deduped.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  return buildPathString(points);
 };
 
 const buildAutoPositions = (nodes) => {
@@ -365,10 +518,13 @@ const FreeLayoutCanvas = ({
       }
 
       const { start, end } = chooseAnchorPair(parentRect, childRect);
+      const obstacles = Object.entries(nodeRects)
+        .filter(([id]) => id !== node.id && id !== parentId)
+        .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
 
       return {
         id: `${parentId}-${node.id}`,
-        d: createOrthogonalPath(start, end),
+        d: createOrthogonalPath(start, end, obstacles, canvasSize),
       };
     })
     .filter(Boolean);
