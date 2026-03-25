@@ -643,6 +643,17 @@ const FreeLayoutCanvas = ({
                 onContextMenu={(event) => handleContextMenu(event, node)}
                 onDragStart={(event) => event.preventDefault()}
               >
+                <div
+                  className={`free-layout-anchors${
+                    selectedNodeId === node.id || isDragging ? " visible" : ""
+                  }`}
+                  aria-hidden="true"
+                >
+                  <span className="free-layout-anchor top" />
+                  <span className="free-layout-anchor right" />
+                  <span className="free-layout-anchor bottom" />
+                  <span className="free-layout-anchor left" />
+                </div>
                 <ChartNodeCard data={node} />
               </div>
             </li>
