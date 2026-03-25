@@ -4,6 +4,10 @@ import { isDefiend, getGenderedPosition } from "../../services/service";
 import "./ChartNode.scss";
 
 const ChartNodePositions = forwardRef(({ ds, data, positions }, ref) => {
+  const personStyle = ds?.layout?.personFontFamily
+    ? { fontFamily: ds.layout.personFontFamily }
+    : undefined;
+
   return (
     <ul
       className={`positions${
@@ -34,7 +38,10 @@ const ChartNodePositions = forwardRef(({ ds, data, positions }, ref) => {
                       )}
                     </span>
                   )}
-                  <h4 className={`person${position?.person?.highlight ? " highlighted" : ""}`}>
+                  <h4
+                    className={`person${position?.person?.highlight ? " highlighted" : ""}`}
+                    style={personStyle}
+                  >
                     {position?.person?.salutation}
                     {position?.person?.title && " "}
                     {position?.person?.title}

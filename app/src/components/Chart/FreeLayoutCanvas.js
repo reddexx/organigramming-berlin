@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 
 import { selectNodeService } from "../../services/service";
@@ -32,6 +32,7 @@ const ANCHOR_SIDES = ["top", "right", "bottom", "left"];
 const CONNECTOR_EDGE_OVERLAP = 4;
 const GRID_SIZE = 24;
 const ALIGNMENT_THRESHOLD = 8;
+const ANCHOR_FOCUS_DISTANCE = 40;
 
 const flattenNodes = (nodes, parentId = null, level = 1, result = []) => {
   (nodes || []).forEach((node) => {
@@ -160,6 +161,63 @@ const getAnchorElementData = (element) => {
   }
 
   return { nodeId, side };
+};
+
+const getConnectableNodeIds = (sourceNodeId, nodeMetaById) => {
+  const sourceMeta = nodeMetaById[sourceNodeId];
+
+  if (!sourceMeta) {
+    return [];
+  }
+
+  const nextIds = [];
+
+  if (sourceMeta.parentId) {
+    nextIds.push(sourceMeta.parentId);
+  }
+
+  Object.values(nodeMetaById).forEach((nodeMeta) => {
+    if (nodeMeta.parentId === sourceNodeId) {
+      nextIds.push(nodeMeta.node.id);
+    }
+  });
+
+  return nextIds;
+};
+
+const getClosestAnchorSelection = (pointer, nodeIds, nodeRects, maxDistance) => {
+  let closestAnchor = null;
+
+  nodeIds.forEach((nodeId) => {
+    const rect = nodeRects[nodeId];
+
+    if (!rect) {
+      return;
+    }
+
+    const anchors = getAnchorsFromRect(rect);
+
+    ANCHOR_SIDES.forEach((side) => {
+      const anchor = anchors[side];
+      const distance = Math.hypot(pointer.x - anchor.x, pointer.y - anchor.y);
+
+      if (distance > maxDistance) {
+        return;
+      }
+
+      if (!closestAnchor || distance < closestAnchor.distance) {
+        closestAnchor = {
+          nodeId,
+          side,
+          distance,
+        };
+      }
+    });
+  });
+
+  return closestAnchor
+    ? { nodeId: closestAnchor.nodeId, side: closestAnchor.side }
+    : null;
 };
 
 const expandRect = (rect, padding) => ({
@@ -599,7 +657,7 @@ const FreeLayoutCanvas = ({
     [flattenedNodes]
   );
 
-  const getPosition = (node) => {
+  const getPosition = useCallback((node) => {
     if (draftPositions[node.id]) {
       return draftPositions[node.id];
     }
@@ -612,7 +670,7 @@ const FreeLayoutCanvas = ({
     }
 
     return autoPositions[node.id] || { x: 0, y: 0 };
-  };
+  }, [autoPositions, draftPositions]);
 
   useEffect(() => {
     const subscription = selectNodeService
@@ -657,7 +715,7 @@ const FreeLayoutCanvas = ({
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", measureNodes);
     };
-  }, [flattenedNodes, draftPositions, autoPositions]);
+  }, [flattenedNodes, draftPositions, autoPositions, getPosition]);
 
   useEffect(() => {
     if (!dragState) {
@@ -750,12 +808,31 @@ const FreeLayoutCanvas = ({
     document.body.classList.add("free-layout-connecting");
 
     const updateHoveredAnchor = (event) => {
-      const hoveredElement = document.elementFromPoint(event.clientX, event.clientY);
-      const hoveredAnchor = getAnchorElementData(hoveredElement);
-
       setConnectorDragState((current) => {
         if (!current) {
           return current;
+        }
+
+        const hoveredElement = document.elementFromPoint(event.clientX, event.clientY);
+        const exactAnchor = getAnchorElementData(hoveredElement);
+        const wrapperRect = wrapperRef.current?.getBoundingClientRect();
+        const connectableNodeIds = getConnectableNodeIds(current.nodeId, nodeMetaById);
+
+        let hoveredAnchor =
+          exactAnchor && connectableNodeIds.includes(exactAnchor.nodeId)
+            ? exactAnchor
+            : null;
+
+        if (!hoveredAnchor && wrapperRect) {
+          hoveredAnchor = getClosestAnchorSelection(
+            {
+              x: event.clientX - wrapperRect.left,
+              y: event.clientY - wrapperRect.top,
+            },
+            connectableNodeIds,
+            nodeRects,
+            ANCHOR_FOCUS_DISTANCE
+          );
         }
 
         return {
@@ -810,7 +887,7 @@ const FreeLayoutCanvas = ({
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("blur", handleWindowBlur);
     };
-  }, [connectorDragState, nodeMetaById, onUpdateNodeLayout]);
+  }, [connectorDragState, nodeMetaById, nodeRects, onUpdateNodeLayout]);
 
   const canvasSize = useMemo(() => {
     const measuredWidths = Object.values(nodeRects).map(
@@ -833,7 +910,7 @@ const FreeLayoutCanvas = ({
       width: Math.max(1400, ...measuredWidths, ...positionedWidths),
       height: Math.max(900, ...measuredHeights, ...positionedHeights),
     };
-  }, [flattenedNodes, nodeRects, draftPositions]);
+  }, [flattenedNodes, nodeRects, draftPositions, getPosition]);
 
   const connectors = flattenedNodes
     .filter(({ parentId }) => parentId)
@@ -1100,7 +1177,9 @@ const FreeLayoutCanvas = ({
               >
                 {contentEditable && (
                   <div
-                    className={`free-layout-anchors${showAnchors ? " visible" : ""}`}
+                    className={`free-layout-anchors${showAnchors ? " visible" : ""}${
+                      connectorDragState ? " connecting" : ""
+                    }`}
                   >
                     {ANCHOR_SIDES.map((side) => {
                       const isActive =

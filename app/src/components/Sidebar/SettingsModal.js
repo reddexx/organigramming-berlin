@@ -6,7 +6,6 @@ import { validationRules } from "../../validation/validationRules";
 
 import Form from "@rjsf/bootstrap-4";
 import { getDefinitions } from "../../services/getDefinitions";
-const definitions = getDefinitions();
 
 const SettingsModal = (props) => {
   const [formData, setFormData] = useState({ ...props.data });
@@ -32,6 +31,7 @@ const SettingsModal = (props) => {
       },
     },
   };
+  const definitions = getDefinitions(formData);
 
   useEffect(() => {
     const warningMessages = getErrorMsg(props.data);
@@ -50,6 +50,21 @@ const SettingsModal = (props) => {
     "ui:headless": true,
     settings: {
       "ui:headless": true,
+      roleOptions: {
+        "ui:options": {
+          orderable: false,
+        },
+      },
+      departmentOptions: {
+        "ui:options": {
+          orderable: false,
+        },
+      },
+      additionalDesignationOptions: {
+        "ui:options": {
+          orderable: false,
+        },
+      },
     },
   };
 
@@ -91,10 +106,8 @@ const SettingsModal = (props) => {
               {" "}
             </Form>
             <p>
-              Hier können Sie eine der hinterlegten Validierung auswählen. Die
-              Validierung überprüft, ob z.B. Telefonnummern im richtigen Format
-              eingegeben werden. Bei einer falschen Eingabe wird eine
-              Warnmeldung angezeigt.
+              Hier können Sie Validierung sowie Vorschlagslisten für Rollen,
+              Abteilungen und Zusatzbezeichnungen verwalten.
             </p>
             {warningMessages && warningMessages?.length !== 0 && (
               <>

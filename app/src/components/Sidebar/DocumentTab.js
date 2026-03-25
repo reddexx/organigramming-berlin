@@ -6,7 +6,6 @@ import ObjectFieldTemplate from "../From/ObjectFieldTemplate";
 import MDEditorWidget from "../From/MDEditor";
 import { getDefinitions } from "../../services/getDefinitions";
 import UriSearch from "../From/UriSearch";
-const definitions = getDefinitions();
 
 const importAll = (r) => {
   let images = [];
@@ -53,6 +52,7 @@ const preuploads = importAll(
 
 const DocumentTab = ({ data, sendDataUp }) => {
   const [formData, setFormData] = useState({ ...data });
+  const definitions = getDefinitions(data);
 
   const timerRef = useRef(null);
 

@@ -12,6 +12,27 @@
           "type": "string",
           "title": "Titel"
         },
+        "titleFontFamily": {
+          "type": "string",
+          "title": "Schriftart Titelbereich",
+          "default": "",
+          "enum": [
+            "",
+            "Georgia, serif",
+            "\"Trebuchet MS\", sans-serif",
+            "\"Palatino Linotype\", \"Book Antiqua\", Palatino, serif",
+            "\"Gill Sans\", \"Trebuchet MS\", sans-serif",
+            "\"Courier New\", monospace"
+          ],
+          "enumNames": [
+            "Standard",
+            "Georgia",
+            "Trebuchet MS",
+            "Palatino",
+            "Gill Sans",
+            "Courier New"
+          ]
+        },
         "paperSize": {
           "type": "string",
           "title": "Ausgabegröße",
@@ -154,6 +175,76 @@
               "default": 0,
               "minimum": 0,
               "maximum": 640
+            },
+            "headingFontFamily": {
+              "type": "string",
+              "title": "Schriftart Kopfbereich",
+              "default": "",
+              "enum": [
+                "",
+                "Georgia, serif",
+                "\"Trebuchet MS\", sans-serif",
+                "\"Palatino Linotype\", \"Book Antiqua\", Palatino, serif",
+                "\"Gill Sans\", \"Trebuchet MS\", sans-serif",
+                "\"Courier New\", monospace"
+              ],
+              "enumNames": [
+                "Standard",
+                "Georgia",
+                "Trebuchet MS",
+                "Palatino",
+                "Gill Sans",
+                "Courier New"
+              ]
+            },
+            "contentFontFamily": {
+              "type": "string",
+              "title": "Schriftart Inhalt",
+              "default": "",
+              "enum": [
+                "",
+                "Georgia, serif",
+                "\"Trebuchet MS\", sans-serif",
+                "\"Palatino Linotype\", \"Book Antiqua\", Palatino, serif",
+                "\"Gill Sans\", \"Trebuchet MS\", sans-serif",
+                "\"Courier New\", monospace"
+              ],
+              "enumNames": [
+                "Standard",
+                "Georgia",
+                "Trebuchet MS",
+                "Palatino",
+                "Gill Sans",
+                "Courier New"
+              ]
+            },
+            "personFontFamily": {
+              "type": "string",
+              "title": "Schriftart Person",
+              "default": "",
+              "enum": [
+                "",
+                "Georgia, serif",
+                "\"Trebuchet MS\", sans-serif",
+                "\"Palatino Linotype\", \"Book Antiqua\", Palatino, serif",
+                "\"Gill Sans\", \"Trebuchet MS\", sans-serif",
+                "\"Courier New\", monospace"
+              ],
+              "enumNames": [
+                "Standard",
+                "Georgia",
+                "Trebuchet MS",
+                "Palatino",
+                "Gill Sans",
+                "Courier New"
+              ]
+            },
+            "purposeTextAlign": {
+              "type": "string",
+              "title": "Ausrichtung Zusatzbezeichnung",
+              "default": "left",
+              "enum": ["left", "center", "right"],
+              "enumNames": ["Links", "Zentriert", "Rechts"]
             },
             "positionMode": {
               "title": "Positionierung",
@@ -583,6 +674,33 @@
             "keine Validierung",
             "für die Berliner Verwaltung (in Bearbeitung)"
           ]
+        },
+        "roleOptions": {
+          "type": "array",
+          "title": "Rollen",
+          "items": {
+            "type": "string",
+            "title": "Rolle"
+          },
+          "default": []
+        },
+        "departmentOptions": {
+          "type": "array",
+          "title": "Abteilungen",
+          "items": {
+            "type": "string",
+            "title": "Abteilung"
+          },
+          "default": []
+        },
+        "additionalDesignationOptions": {
+          "type": "array",
+          "title": "Zusatzbezeichnungen",
+          "items": {
+            "type": "string",
+            "title": "Zusatzbezeichnung"
+          },
+          "default": []
         }
       }
     }
@@ -590,6 +708,9 @@
   "properties": {
     "document": {
       "$ref": "#/definitions/document"
+    },
+    "settings": {
+      "$ref": "#/definitions/settings"
     },
     "organisations": {
       "type": "array",

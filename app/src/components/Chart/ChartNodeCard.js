@@ -42,10 +42,19 @@ const ChartNodeCard = ({ data }) => {
                 )} 50%,${data.layout.bgColor} 50%)`
               : "",
           color: `${getContrastTextColor(data.layout?.bgColor)}`,
+          fontFamily: data?.layout?.headingFontFamily || undefined,
         }}
       >
         <h1>{data.name}</h1>
-        <h3 style={{ fontStyle: "normal", fontWeight: 300 }}>{data.purpose}</h3>
+        <h3
+          style={{
+            fontStyle: "normal",
+            fontWeight: 300,
+            textAlign: data?.layout?.purposeTextAlign || "left",
+          }}
+        >
+          {data.purpose}
+        </h3>
         {data.type && (
           <h3
             className="text-end"
@@ -61,7 +70,12 @@ const ChartNodeCard = ({ data }) => {
         )}
       </div>
       {(data.departments || data.positions || data.contact || data.address) && (
-        <div className={`oc-content${data.avatar ? " has-avatar" : ""}`}>
+        <div
+          className={`oc-content${data.avatar ? " has-avatar" : ""}`}
+          style={{
+            fontFamily: data?.layout?.contentFontFamily || undefined,
+          }}
+        >
           {data.avatar && (
             <div className="oc-avatar">
               <img src={data.avatar} alt="avatar" />

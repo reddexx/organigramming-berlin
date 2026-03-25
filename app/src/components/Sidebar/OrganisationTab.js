@@ -43,7 +43,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     CustomDropdown: CustomDropdown,
   };
 
-  const definitions = getDefinitions();
+  const definitions = getDefinitions(dsDigger?.ds);
   definitions.definitions.organisation.properties.linkedChartId = {
     ...(definitions.definitions.organisation.properties.linkedChartId || {}),
     type: "string",
@@ -70,6 +70,10 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       },
       type: {
         "ui:placeholder": "Auswählen o. eingeben z.B. 'Abteilung'",
+        "ui:field": CustomDropdown,
+      },
+      purpose: {
+        "ui:placeholder": "Auswählen o. eingeben",
         "ui:field": CustomDropdown,
       },
       isMainOrganisation: {
@@ -183,13 +187,23 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
             inline: true,
           },
         },
+        purposeTextAlign: {
+          "ui:widget": "radio",
+          "ui:options": {
+            inline: true,
+          },
+        },
         x: {
-          "ui:help": "Horizontale Position im freien Layout",
-          "ui:disabled": formData.current?.layout?.positionMode !== "manual",
+          "ui:widget": "hidden",
         },
         y: {
-          "ui:help": "Vertikale Position im freien Layout",
-          "ui:disabled": formData.current?.layout?.positionMode !== "manual",
+          "ui:widget": "hidden",
+        },
+        connectorParentAnchor: {
+          "ui:widget": "hidden",
+        },
+        connectorChildAnchor: {
+          "ui:widget": "hidden",
         },
       },
       organisations: {
@@ -206,6 +220,10 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       departments: {
         items: {
           "ui:headless": true,
+          purpose: {
+            "ui:placeholder": "Auswählen o. eingeben",
+            "ui:field": CustomDropdown,
+          },
           type: {
             "ui:placeholder": "z.B. Büro",
             "ui:field": CustomDropdown,
@@ -267,10 +285,26 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
 
   // handle avatar upload: the FileSelect widget will return base64 string
   // we upload to server and replace value with public URL
+  const getUploadFilename = (base64) => {
+    const rawId = formData.current && formData.current.id ? formData.current.id : Date.now();
+    const mimeType = base64.match(/^data:([^;]+);/i)?.[1] || "image/png";
+    const extensionMap = {
+      "image/png": "png",
+      "image/jpeg": "jpg",
+      "image/jpg": "jpg",
+      "image/gif": "gif",
+      "image/webp": "webp",
+      "image/svg+xml": "svg",
+    };
+    const extension = extensionMap[mimeType] || "png";
+
+    return `${rawId}.${extension}`;
+  };
+
   const handleAvatarUpload = async (base64) => {
     if (!base64) return;
     try {
-      const filename = (formData.current && formData.current.id ? formData.current.id : Date.now()) + '.png';
+      const filename = getUploadFilename(base64);
       const res = await fetch('/api/upload-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -716,7 +716,12 @@ const ChartContainer = forwardRef(
                     )}
 
                     {data.document.title && (
-                      <div className="title-content">
+                      <div
+                        className="title-content"
+                        style={{
+                          fontFamily: data?.document?.titleFontFamily || undefined,
+                        }}
+                      >
                         <h1>{data.document.title}</h1>
                         {data.document.creator && (
                           <span>{data.document.creator}</span>

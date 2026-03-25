@@ -1,10 +1,17 @@
 import orgChart from "../schemas/organization_chart";
 import typeVocabLookup from "./typeVocabLookup";
 
-export function getDefinitions() {
+const mergeUniqueSorted = (...groups) => {
+  return [...new Set(groups.flat().filter((item) => typeof item === "string" && item.trim()))].sort(
+    (left, right) => left.localeCompare(right, "de")
+  );
+};
+
+export function getDefinitions(data = null) {
+  const definitions = JSON.parse(JSON.stringify(orgChart));
   let orgs = [];
   let persons = [];
-  let positionStatus = []
+  let positionStatus = [];
 
   Object.keys(typeVocabLookup).forEach((type) => {
     if (typeVocabLookup[type].type === "org") {
@@ -16,13 +23,34 @@ export function getDefinitions() {
     if (typeVocabLookup[type].type === "positionStatus") {
       positionStatus.push(type);
     }
-
   });
 
-  orgChart.definitions.organisation.properties.type.examples = orgs.sort();
-  orgChart.definitions.department.properties.type.examples = orgs.sort();
-  orgChart.definitions.position.properties.positionType.examples = persons.sort();
-  orgChart.definitions.position.properties.positionStatus.examples = positionStatus.sort();
+  const customRoles = data?.settings?.roleOptions || [];
+  const customDepartments = data?.settings?.departmentOptions || [];
+  const customAdditionalDesignations = data?.settings?.additionalDesignationOptions || [];
 
-  return orgChart;
+  definitions.definitions.organisation.properties.type.examples = mergeUniqueSorted(
+    orgs,
+    customDepartments
+  );
+  definitions.definitions.department.properties.type.examples = mergeUniqueSorted(
+    orgs,
+    customDepartments
+  );
+  definitions.definitions.organisation.properties.purpose.examples = mergeUniqueSorted(
+    customAdditionalDesignations
+  );
+  definitions.definitions.department.properties.purpose.examples = mergeUniqueSorted(
+    customAdditionalDesignations
+  );
+  definitions.definitions.position.properties.positionType.examples = mergeUniqueSorted(
+    persons,
+    customRoles
+  );
+  definitions.definitions.position.properties.positionStatus.examples = mergeUniqueSorted(
+    positionStatus,
+    customAdditionalDesignations
+  );
+
+  return definitions;
 }
