@@ -29,6 +29,7 @@ const CANVAS_PADDING = 160;
 const ANCHOR_OFFSET = 24;
 const OBSTACLE_PADDING = 18;
 const ANCHOR_SIDES = ["top", "right", "bottom", "left"];
+const CONNECTOR_EDGE_OVERLAP = 4;
 
 const flattenNodes = (nodes, parentId = null, level = 1, result = []) => {
   (nodes || []).forEach((node) => {
@@ -45,13 +46,13 @@ const getAnchorsFromRect = (rect) => ({
   top: {
     side: "top",
     x: rect.left + rect.width / 2,
-    y: rect.top,
+    y: rect.top + CONNECTOR_EDGE_OVERLAP,
     dx: 0,
     dy: -1,
   },
   right: {
     side: "right",
-    x: rect.left + rect.width,
+    x: rect.left + rect.width - CONNECTOR_EDGE_OVERLAP,
     y: rect.top + rect.height / 2,
     dx: 1,
     dy: 0,
@@ -59,13 +60,13 @@ const getAnchorsFromRect = (rect) => ({
   bottom: {
     side: "bottom",
     x: rect.left + rect.width / 2,
-    y: rect.top + rect.height,
+    y: rect.top + rect.height - CONNECTOR_EDGE_OVERLAP,
     dx: 0,
     dy: 1,
   },
   left: {
     side: "left",
-    x: rect.left,
+    x: rect.left + CONNECTOR_EDGE_OVERLAP,
     y: rect.top + rect.height / 2,
     dx: -1,
     dy: 0,
@@ -140,6 +141,23 @@ const resolveConnectionSelection = (firstSelection, secondSelection, nodeMetaByI
   }
 
   return null;
+};
+
+const getAnchorElementData = (element) => {
+  const anchorElement = element?.closest?.(".free-layout-anchor");
+
+  if (!anchorElement) {
+    return null;
+  }
+
+  const nodeId = anchorElement.dataset.nodeId;
+  const side = anchorElement.dataset.anchorSide;
+
+  if (!nodeId || !isValidAnchorSide(side)) {
+    return null;
+  }
+
+  return { nodeId, side };
 };
 
 const expandRect = (rect, padding) => ({
@@ -394,7 +412,7 @@ const FreeLayoutCanvas = ({
   const [nodeRects, setNodeRects] = useState({});
   const [draftPositions, setDraftPositions] = useState({});
   const [dragState, setDragState] = useState(null);
-  const [pendingAnchorSelection, setPendingAnchorSelection] = useState(null);
+  const [connectorDragState, setConnectorDragState] = useState(null);
 
   const flattenedNodes = useMemo(() => flattenNodes(nodes), [nodes]);
   const autoPositions = useMemo(() => buildAutoPositions(nodes), [nodes]);
@@ -447,7 +465,8 @@ const FreeLayoutCanvas = ({
           return;
         }
 
-        const rect = element.getBoundingClientRect();
+        const measuredElement = element.querySelector(".oc-container") || element;
+        const rect = measuredElement.getBoundingClientRect();
         nextRects[node.id] = {
           left: rect.left - wrapperRect.left,
           top: rect.top - wrapperRect.top,
@@ -543,6 +562,73 @@ const FreeLayoutCanvas = ({
     };
   }, [dragState, draftPositions, onUpdateNodeLayout]);
 
+  useEffect(() => {
+    if (!connectorDragState) {
+      return undefined;
+    }
+
+    document.body.classList.add("free-layout-connecting");
+
+    const updateHoveredAnchor = (event) => {
+      const hoveredElement = document.elementFromPoint(event.clientX, event.clientY);
+      const hoveredAnchor = getAnchorElementData(hoveredElement);
+
+      setConnectorDragState((current) => {
+        if (!current) {
+          return current;
+        }
+
+        return {
+          ...current,
+          pointer: { x: event.clientX, y: event.clientY },
+          hoveredAnchor,
+        };
+      });
+    };
+
+    const handleMouseMove = (event) => {
+      event.preventDefault();
+      updateHoveredAnchor(event);
+    };
+
+    const handleMouseUp = async (event) => {
+      const targetAnchor = getAnchorElementData(document.elementFromPoint(event.clientX, event.clientY));
+      const sourceAnchor = {
+        nodeId: connectorDragState.nodeId,
+        side: connectorDragState.side,
+      };
+      const resolvedConnection = targetAnchor
+        ? resolveConnectionSelection(sourceAnchor, targetAnchor, nodeMetaById)
+        : null;
+
+      setConnectorDragState(null);
+
+      if (!resolvedConnection) {
+        return;
+      }
+
+      await onUpdateNodeLayout(resolvedConnection.childNodeId, {
+        connectorParentAnchor: resolvedConnection.parentAnchor,
+        connectorChildAnchor: resolvedConnection.childAnchor,
+      });
+    };
+
+    const handleWindowBlur = () => {
+      setConnectorDragState(null);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.body.classList.remove("free-layout-connecting");
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, [connectorDragState, nodeMetaById, onUpdateNodeLayout]);
+
   const canvasSize = useMemo(() => {
     const measuredWidths = Object.values(nodeRects).map(
       (rect) => rect.left + rect.width + CANVAS_PADDING
@@ -581,8 +667,8 @@ const FreeLayoutCanvas = ({
         .filter(([id]) => id !== node.id && id !== parentId)
         .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
       const isPendingConnector =
-        pendingAnchorSelection &&
-        (pendingAnchorSelection.nodeId === node.id || pendingAnchorSelection.nodeId === parentId);
+        connectorDragState &&
+        (connectorDragState.nodeId === node.id || connectorDragState.nodeId === parentId);
 
       return {
         id: `${parentId}-${node.id}`,
@@ -592,25 +678,70 @@ const FreeLayoutCanvas = ({
       };
     })
     .filter(Boolean);
-  const pendingNodeMeta = pendingAnchorSelection
-    ? nodeMetaById[pendingAnchorSelection.nodeId]
+  const pendingNodeMeta = connectorDragState
+    ? nodeMetaById[connectorDragState.nodeId]
     : null;
+
+  const previewConnector = useMemo(() => {
+    if (!connectorDragState) {
+      return null;
+    }
+
+    const sourceRect = nodeRects[connectorDragState.nodeId];
+
+    if (!sourceRect) {
+      return null;
+    }
+
+    const sourceAnchor = getAnchorsFromRect(sourceRect)[connectorDragState.side];
+    let targetAnchor;
+
+    if (connectorDragState.hoveredAnchor?.nodeId) {
+      const hoveredRect = nodeRects[connectorDragState.hoveredAnchor.nodeId];
+
+      if (hoveredRect) {
+        targetAnchor = getAnchorsFromRect(hoveredRect)[connectorDragState.hoveredAnchor.side];
+      }
+    }
+
+    if (!targetAnchor) {
+      const wrapperRect = wrapperRef.current?.getBoundingClientRect();
+
+      if (!wrapperRect || !connectorDragState.pointer) {
+        return null;
+      }
+
+      targetAnchor = {
+        x: connectorDragState.pointer.x - wrapperRect.left,
+        y: connectorDragState.pointer.y - wrapperRect.top,
+        dx: sourceAnchor.dx,
+        dy: sourceAnchor.dy,
+      };
+    }
+
+    const targetNodeId = connectorDragState.hoveredAnchor?.nodeId;
+    const obstacles = Object.entries(nodeRects)
+      .filter(([id]) => id !== connectorDragState.nodeId && id !== targetNodeId)
+      .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
+
+    return createOrthogonalPath(sourceAnchor, targetAnchor, obstacles, canvasSize);
+  }, [canvasSize, connectorDragState, nodeRects]);
 
   const handleCanvasMouseDown = (event) => {
     if (event.target.closest(".oc-node, .free-layout-anchor")) {
       return;
     }
 
-    setPendingAnchorSelection(null);
+    setConnectorDragState(null);
   };
 
-  const handleAnchorClick = async (event, nodeMeta, side) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (!contentEditable) {
+  const handleAnchorMouseDown = (event, nodeMeta, side) => {
+    if (!contentEditable || event.button !== 0) {
       return;
     }
+
+    event.preventDefault();
+    event.stopPropagation();
 
     onCloseContextMenu?.();
     dragMovedRef.current = false;
@@ -621,39 +752,12 @@ const FreeLayoutCanvas = ({
     }
 
     selectNodeService.sendSelectedNodeInfo(nodeMeta.node.id);
-
-    const nextSelection = { nodeId: nodeMeta.node.id, side };
-
-    if (
-      pendingAnchorSelection?.nodeId === nextSelection.nodeId &&
-      pendingAnchorSelection?.side === nextSelection.side
-    ) {
-      setPendingAnchorSelection(null);
-      return;
-    }
-
-    if (!pendingAnchorSelection) {
-      setPendingAnchorSelection(nextSelection);
-      return;
-    }
-
-    const resolvedConnection = resolveConnectionSelection(
-      pendingAnchorSelection,
-      nextSelection,
-      nodeMetaById
-    );
-
-    if (!resolvedConnection) {
-      setPendingAnchorSelection(nextSelection);
-      return;
-    }
-
-    await onUpdateNodeLayout(resolvedConnection.childNodeId, {
-      connectorParentAnchor: resolvedConnection.parentAnchor,
-      connectorChildAnchor: resolvedConnection.childAnchor,
+    setConnectorDragState({
+      nodeId: nodeMeta.node.id,
+      side,
+      pointer: { x: event.clientX, y: event.clientY },
+      hoveredAnchor: null,
     });
-
-    setPendingAnchorSelection(null);
   };
 
   const handleNodeMouseDown = (event, node) => {
@@ -677,7 +781,7 @@ const FreeLayoutCanvas = ({
     }
 
     onCloseContextMenu?.();
-    setPendingAnchorSelection(null);
+    setConnectorDragState(null);
     dragMovedRef.current = false;
     setDragState({
       node,
@@ -736,23 +840,26 @@ const FreeLayoutCanvas = ({
             d={connector.d}
           />
         ))}
+        {previewConnector && <path className="preview pending" d={previewConnector} />}
       </svg>
       <ul className="free-layout-list">
         {flattenedNodes.map((nodeMeta) => {
           const { node, level, parentId } = nodeMeta;
           const position = getPosition(node);
           const isDragging = dragState?.node?.id === node.id;
-          const isPendingNode = pendingAnchorSelection?.nodeId === node.id;
+          const isPendingNode = connectorDragState?.nodeId === node.id;
+          const isHoveredTarget = connectorDragState?.hoveredAnchor?.nodeId === node.id;
           const isConnectableNode = Boolean(
             pendingNodeMeta &&
-              pendingAnchorSelection.nodeId !== node.id &&
-              (pendingNodeMeta.parentId === node.id || parentId === pendingAnchorSelection.nodeId)
+              connectorDragState.nodeId !== node.id &&
+              (pendingNodeMeta.parentId === node.id || parentId === connectorDragState.nodeId)
           );
           const showAnchors =
             selectedNodeId === node.id ||
             isDragging ||
             isPendingNode ||
-            isConnectableNode;
+            isConnectableNode ||
+            isHoveredTarget;
 
           return (
             <li
@@ -779,6 +886,7 @@ const FreeLayoutCanvas = ({
                   (selectedNodeId === node.id ? " selected" : "") +
                   (isPendingNode ? " pending-connection" : "") +
                   (isConnectableNode ? " connectable-connection" : "") +
+                  (isHoveredTarget ? " hovered-connection" : "") +
                   (node.layout?.style ? ` ${node.layout.style}` : "") +
                   (isDragging ? " position-dragging" : "") +
                   (node.organisations && node.organisations.length > 0
@@ -799,8 +907,11 @@ const FreeLayoutCanvas = ({
                 >
                   {ANCHOR_SIDES.map((side) => {
                     const isActive =
-                      pendingAnchorSelection?.nodeId === node.id &&
-                      pendingAnchorSelection?.side === side;
+                      connectorDragState?.nodeId === node.id &&
+                      connectorDragState?.side === side;
+                    const isHovered =
+                      connectorDragState?.hoveredAnchor?.nodeId === node.id &&
+                      connectorDragState?.hoveredAnchor?.side === side;
 
                     return (
                       <button
@@ -808,12 +919,12 @@ const FreeLayoutCanvas = ({
                         type="button"
                         className={`free-layout-anchor ${side}${
                           isActive ? " active" : ""
-                        }${isConnectableNode ? " connectable" : ""}`}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                        }}
-                        onClick={(event) => handleAnchorClick(event, nodeMeta, side)}
+                        }${isConnectableNode ? " connectable" : ""}${
+                          isHovered ? " hovered" : ""
+                        }`}
+                        data-node-id={node.id}
+                        data-anchor-side={side}
+                        onMouseDown={(event) => handleAnchorMouseDown(event, nodeMeta, side)}
                         title={`Verbindung über ${side} setzen`}
                         aria-label={`${node.name || node.id}: Verbindung über ${side} setzen`}
                       />

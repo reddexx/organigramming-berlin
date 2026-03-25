@@ -271,6 +271,11 @@
           &.pending {
             stroke: $primary;
           }
+
+          &.preview {
+            stroke-dasharray: 8 6;
+            stroke-width: 2.5;
+          }
         }
       }
 
@@ -352,6 +357,12 @@
               box-shadow: 0 0 0 3px rgba($primary, 0.18);
             }
 
+            &.hovered {
+              background-color: rgba($primary, 0.16);
+              border-color: $primary;
+              box-shadow: 0 0 0 3px rgba($primary, 0.12);
+            }
+
             &:focus-visible {
               outline: 2px solid rgba($primary, 0.45);
               outline-offset: 2px;
@@ -388,6 +399,10 @@
 
           > .oc-node.connectable-connection .oc-container {
             box-shadow: 0 0 0 2px rgba($secondary, 0.16);
+          }
+
+          > .oc-node.hovered-connection .oc-container {
+            box-shadow: 0 0 0 2px rgba($primary, 0.28);
           }
         }
       }
@@ -444,6 +459,15 @@
 
 body.free-layout-dragging {
   user-select: none;
+}
+
+body.free-layout-connecting {
+  .view-container .editor,
+  .view-container .editor .paper,
+  .view-container .editor .free-layout-canvas,
+  .view-container .editor .free-layout-item > .oc-node {
+    cursor: crosshair !important;
+  }
 }
 
 .oc-mask {
