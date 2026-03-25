@@ -26,6 +26,7 @@ const SIBLING_GAP = 56;
 const START_X = 80;
 const START_Y = 40;
 const CANVAS_PADDING = 160;
+const ANCHOR_OFFSET = 24;
 
 const flattenNodes = (nodes, parentId = null, level = 1, result = []) => {
   (nodes || []).forEach((node) => {
@@ -37,6 +38,103 @@ const flattenNodes = (nodes, parentId = null, level = 1, result = []) => {
 };
 
 const getNodeWidth = (node) => node?.layout?.nodeWidth || 224;
+
+const getAnchorsFromRect = (rect) => ({
+  top: {
+    side: "top",
+    x: rect.left + rect.width / 2,
+    y: rect.top,
+    dx: 0,
+    dy: -1,
+  },
+  right: {
+    side: "right",
+    x: rect.left + rect.width,
+    y: rect.top + rect.height / 2,
+    dx: 1,
+    dy: 0,
+  },
+  bottom: {
+    side: "bottom",
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height,
+    dx: 0,
+    dy: 1,
+  },
+  left: {
+    side: "left",
+    x: rect.left,
+    y: rect.top + rect.height / 2,
+    dx: -1,
+    dy: 0,
+  },
+});
+
+const chooseAnchorPair = (parentRect, childRect) => {
+  const parentCenterX = parentRect.left + parentRect.width / 2;
+  const parentCenterY = parentRect.top + parentRect.height / 2;
+  const childCenterX = childRect.left + childRect.width / 2;
+  const childCenterY = childRect.top + childRect.height / 2;
+  const deltaX = childCenterX - parentCenterX;
+  const deltaY = childCenterY - parentCenterY;
+  const parentAnchors = getAnchorsFromRect(parentRect);
+  const childAnchors = getAnchorsFromRect(childRect);
+
+  if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    return deltaX >= 0
+      ? { start: parentAnchors.right, end: childAnchors.left }
+      : { start: parentAnchors.left, end: childAnchors.right };
+  }
+
+  return deltaY >= 0
+    ? { start: parentAnchors.bottom, end: childAnchors.top }
+    : { start: parentAnchors.top, end: childAnchors.bottom };
+};
+
+const createOrthogonalPath = (startAnchor, endAnchor) => {
+  const startLead = {
+    x: startAnchor.x + startAnchor.dx * ANCHOR_OFFSET,
+    y: startAnchor.y + startAnchor.dy * ANCHOR_OFFSET,
+  };
+  const endLead = {
+    x: endAnchor.x + endAnchor.dx * ANCHOR_OFFSET,
+    y: endAnchor.y + endAnchor.dy * ANCHOR_OFFSET,
+  };
+
+  const points = [
+    { x: startAnchor.x, y: startAnchor.y },
+    startLead,
+  ];
+
+  const startIsHorizontal = startAnchor.dx !== 0;
+  const endIsHorizontal = endAnchor.dx !== 0;
+
+  if (startIsHorizontal && endIsHorizontal) {
+    const midX = Math.round((startLead.x + endLead.x) / 2);
+    points.push({ x: midX, y: startLead.y });
+    points.push({ x: midX, y: endLead.y });
+  } else if (!startIsHorizontal && !endIsHorizontal) {
+    const midY = Math.round((startLead.y + endLead.y) / 2);
+    points.push({ x: startLead.x, y: midY });
+    points.push({ x: endLead.x, y: midY });
+  } else {
+    points.push({ x: endLead.x, y: startLead.y });
+  }
+
+  points.push(endLead);
+  points.push({ x: endAnchor.x, y: endAnchor.y });
+
+  const deduped = points.filter((point, index, allPoints) => {
+    if (index === 0) {
+      return true;
+    }
+
+    const previousPoint = allPoints[index - 1];
+    return point.x !== previousPoint.x || point.y !== previousPoint.y;
+  });
+
+  return deduped.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+};
 
 const buildAutoPositions = (nodes) => {
   const positions = {};
@@ -266,15 +364,11 @@ const FreeLayoutCanvas = ({
         return null;
       }
 
-      const parentX = parentRect.left + parentRect.width / 2;
-      const parentY = parentRect.top + parentRect.height;
-      const childX = childRect.left + childRect.width / 2;
-      const childY = childRect.top;
-      const midY = parentY + (childY - parentY) / 2;
+      const { start, end } = chooseAnchorPair(parentRect, childRect);
 
       return {
         id: `${parentId}-${node.id}`,
-        d: `M ${parentX} ${parentY} L ${parentX} ${midY} L ${childX} ${midY} L ${childX} ${childY}`,
+        d: createOrthogonalPath(start, end),
       };
     })
     .filter(Boolean);
