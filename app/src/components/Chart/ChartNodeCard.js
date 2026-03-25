@@ -15,6 +15,13 @@ const propTypes = {
 };
 
 const ChartNodeCard = ({ data }) => {
+  const headingFontStyle = data?.layout?.headingFontFamily
+    ? { fontFamily: data.layout.headingFontFamily }
+    : undefined;
+  const contentFontStyle = data?.layout?.contentFontFamily
+    ? { fontFamily: data.layout.contentFontFamily }
+    : undefined;
+
   return (
     <div
       className={`oc-container${data.layout?.grid === "grid2" ? " grid" : ""}`}
@@ -45,12 +52,13 @@ const ChartNodeCard = ({ data }) => {
           fontFamily: data?.layout?.headingFontFamily || undefined,
         }}
       >
-        <h1>{data.name}</h1>
+        <h1 style={headingFontStyle}>{data.name}</h1>
         <h3
           style={{
+            ...headingFontStyle,
             fontStyle: "normal",
             fontWeight: 300,
-            textAlign: data?.layout?.purposeTextAlign || "left",
+            textAlign: data?.purposeTextAlign || data?.layout?.purposeTextAlign || "left",
           }}
         >
           {data.purpose}
@@ -59,6 +67,7 @@ const ChartNodeCard = ({ data }) => {
           <h3
             className="text-end"
             style={{
+              ...headingFontStyle,
               fontStyle: "normal",
             }}
           >
@@ -72,9 +81,7 @@ const ChartNodeCard = ({ data }) => {
       {(data.departments || data.positions || data.contact || data.address) && (
         <div
           className={`oc-content${data.avatar ? " has-avatar" : ""}`}
-          style={{
-            fontFamily: data?.layout?.contentFontFamily || undefined,
-          }}
+          style={contentFontStyle}
         >
           {data.avatar && (
             <div className="oc-avatar">

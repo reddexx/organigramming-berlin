@@ -638,6 +638,8 @@ const FreeLayoutCanvas = ({
   const nodeRefs = useRef({});
   const dragMovedRef = useRef(false);
   const suppressClickRef = useRef(false);
+  const nodeRectsRef = useRef({});
+  const connectorDragStateRef = useRef(null);
 
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [nodeRects, setNodeRects] = useState({});
@@ -671,6 +673,31 @@ const FreeLayoutCanvas = ({
 
     return autoPositions[node.id] || { x: 0, y: 0 };
   }, [autoPositions, draftPositions]);
+
+  const getCanvasPointer = useCallback((clientX, clientY) => {
+    const wrapper = wrapperRef.current;
+
+    if (!wrapper) {
+      return null;
+    }
+
+    const rect = wrapper.getBoundingClientRect();
+    const scaleX = rect.width ? wrapper.offsetWidth / rect.width : 1;
+    const scaleY = rect.height ? wrapper.offsetHeight / rect.height : 1;
+
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  }, []);
+
+  useEffect(() => {
+    nodeRectsRef.current = nodeRects;
+  }, [nodeRects]);
+
+  useEffect(() => {
+    connectorDragStateRef.current = connectorDragState;
+  }, [connectorDragState]);
 
   useEffect(() => {
     const subscription = selectNodeService
@@ -815,7 +842,7 @@ const FreeLayoutCanvas = ({
 
         const hoveredElement = document.elementFromPoint(event.clientX, event.clientY);
         const exactAnchor = getAnchorElementData(hoveredElement);
-        const wrapperRect = wrapperRef.current?.getBoundingClientRect();
+        const canvasPointer = getCanvasPointer(event.clientX, event.clientY);
         const connectableNodeIds = getConnectableNodeIds(current.nodeId, nodeMetaById);
 
         let hoveredAnchor =
@@ -823,21 +850,18 @@ const FreeLayoutCanvas = ({
             ? exactAnchor
             : null;
 
-        if (!hoveredAnchor && wrapperRect) {
+        if (!hoveredAnchor && canvasPointer) {
           hoveredAnchor = getClosestAnchorSelection(
-            {
-              x: event.clientX - wrapperRect.left,
-              y: event.clientY - wrapperRect.top,
-            },
+            canvasPointer,
             connectableNodeIds,
-            nodeRects,
-            ANCHOR_FOCUS_DISTANCE
+            nodeRectsRef.current,
+            Math.max(ANCHOR_FOCUS_DISTANCE, 64)
           );
         }
 
         return {
           ...current,
-          pointer: { x: event.clientX, y: event.clientY },
+          pointer: canvasPointer,
           hoveredAnchor,
         };
       });
@@ -849,12 +873,18 @@ const FreeLayoutCanvas = ({
     };
 
     const handleMouseUp = async (event) => {
+      const activeState = connectorDragStateRef.current;
+
+      if (!activeState) {
+        return;
+      }
+
       const targetAnchor =
         getAnchorElementData(document.elementFromPoint(event.clientX, event.clientY)) ||
-        connectorDragState.hoveredAnchor;
+        activeState.hoveredAnchor;
       const sourceAnchor = {
-        nodeId: connectorDragState.nodeId,
-        side: connectorDragState.side,
+        nodeId: activeState.nodeId,
+        side: activeState.side,
       };
       const resolvedConnection = targetAnchor
         ? resolveConnectionSelection(sourceAnchor, targetAnchor, nodeMetaById)
@@ -887,7 +917,7 @@ const FreeLayoutCanvas = ({
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("blur", handleWindowBlur);
     };
-  }, [connectorDragState, nodeMetaById, nodeRects, onUpdateNodeLayout]);
+  }, [connectorDragState, getCanvasPointer, nodeMetaById, onUpdateNodeLayout]);
 
   const canvasSize = useMemo(() => {
     const measuredWidths = Object.values(nodeRects).map(
@@ -910,7 +940,7 @@ const FreeLayoutCanvas = ({
       width: Math.max(1400, ...measuredWidths, ...positionedWidths),
       height: Math.max(900, ...measuredHeights, ...positionedHeights),
     };
-  }, [flattenedNodes, nodeRects, draftPositions, getPosition]);
+  }, [flattenedNodes, nodeRects, getPosition]);
 
   const connectors = flattenedNodes
     .filter(({ parentId }) => parentId)
@@ -965,15 +995,13 @@ const FreeLayoutCanvas = ({
     }
 
     if (!targetAnchor) {
-      const wrapperRect = wrapperRef.current?.getBoundingClientRect();
-
-      if (!wrapperRect || !connectorDragState.pointer) {
+      if (!connectorDragState.pointer) {
         return null;
       }
 
       targetAnchor = {
-        x: connectorDragState.pointer.x - wrapperRect.left,
-        y: connectorDragState.pointer.y - wrapperRect.top,
+        x: connectorDragState.pointer.x,
+        y: connectorDragState.pointer.y,
         dx: sourceAnchor.dx,
         dy: sourceAnchor.dy,
       };
@@ -1012,7 +1040,7 @@ const FreeLayoutCanvas = ({
     setConnectorDragState({
       nodeId: nodeMeta.node.id,
       side,
-      pointer: { x: event.clientX, y: event.clientY },
+      pointer: getCanvasPointer(event.clientX, event.clientY),
       hoveredAnchor: null,
     });
   };

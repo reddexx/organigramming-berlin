@@ -4,6 +4,9 @@ import { isDefiend, getGenderedPosition } from "../../services/service";
 import "./ChartNode.scss";
 
 const ChartNodePositions = forwardRef(({ ds, data, positions }, ref) => {
+  const contentStyle = ds?.layout?.contentFontFamily
+    ? { fontFamily: ds.layout.contentFontFamily }
+    : undefined;
   const personStyle = ds?.layout?.personFontFamily
     ? { fontFamily: ds.layout.personFontFamily }
     : undefined;
@@ -13,6 +16,7 @@ const ChartNodePositions = forwardRef(({ ds, data, positions }, ref) => {
       className={`positions${
         ds.layout?.grid !== "none" ? " grid " + ds.layout?.grid : ""
       }`}
+      style={contentStyle}
     >
       {positions &&
         positions.map(
@@ -31,7 +35,7 @@ const ChartNodePositions = forwardRef(({ ds, data, positions }, ref) => {
               >
                 <div className="ms-1 mb-1">
                   {position.positionType && (
-                    <span className="position">
+                    <span className="position" style={contentStyle}>
                       {getGenderedPosition(
                         position.positionType,
                         position?.person?.gender
@@ -51,7 +55,7 @@ const ChartNodePositions = forwardRef(({ ds, data, positions }, ref) => {
                     {position?.person?.lastName}
                   </h4>
                   {position.positionStatus && (
-                    <span className="position">
+                    <span className="position" style={contentStyle}>
                       {"(" + position.positionStatus + ")"}
                     </span>
                   )}

@@ -6,6 +6,7 @@ import { validationRules } from "../../validation/validationRules";
 
 import Form from "@rjsf/bootstrap-4";
 import { getDefinitions } from "../../services/getDefinitions";
+import ArrayFieldTemplate from "../From/ArrayFieldTemplate";
 
 const SettingsModal = (props) => {
   const [formData, setFormData] = useState({ ...props.data });
@@ -50,6 +51,12 @@ const SettingsModal = (props) => {
     "ui:headless": true,
     settings: {
       "ui:headless": true,
+      "ui:order": [
+        "validator",
+        "roleOptions",
+        "departmentOptions",
+        "additionalDesignationOptions",
+      ],
       roleOptions: {
         "ui:options": {
           orderable: false,
@@ -98,6 +105,7 @@ const SettingsModal = (props) => {
               uiSchema={uiSchema}
               formData={formData}
               ObjectFieldTemplate={ObjectFieldTemplate}
+              ArrayFieldTemplate={ArrayFieldTemplate}
               onChange={onChange}
               onBlur={onBlur}
               liveValidate

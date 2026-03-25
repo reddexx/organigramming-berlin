@@ -134,6 +134,13 @@
           "type": "string",
           "title": "Zusatzbezeichnung"
         },
+        "purposeTextAlign": {
+          "type": "string",
+          "title": "Ausrichtung Zusatzbezeichnung",
+          "default": "left",
+          "enum": ["left", "center", "right"],
+          "enumNames": ["Links", "Zentriert", "Rechts"]
+        },
         "layout": {
           "type": "object",
           "additionalProperties": false,
@@ -238,13 +245,6 @@
                 "Gill Sans",
                 "Courier New"
               ]
-            },
-            "purposeTextAlign": {
-              "type": "string",
-              "title": "Ausrichtung Zusatzbezeichnung",
-              "default": "left",
-              "enum": ["left", "center", "right"],
-              "enumNames": ["Links", "Zentriert", "Rechts"]
             },
             "positionMode": {
               "title": "Positionierung",

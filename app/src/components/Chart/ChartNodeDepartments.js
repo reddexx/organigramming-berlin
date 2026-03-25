@@ -4,6 +4,9 @@ import { isDefiend, getGenderedPosition } from "../../services/service";
 import "./ChartNode.scss";
 
 const ChartNodeDepartments = forwardRef(({ ds, data, departments }, ref) => {
+  const contentStyle = ds?.layout?.contentFontFamily
+    ? { fontFamily: ds.layout.contentFontFamily }
+    : undefined;
   const personStyle = ds?.layout?.personFontFamily
     ? { fontFamily: ds.layout.personFontFamily }
     : undefined;
@@ -13,6 +16,7 @@ const ChartNodeDepartments = forwardRef(({ ds, data, departments }, ref) => {
       className={`departments${
         ds.layout?.grid !== "none" ? " grid " + ds.layout?.grid : ""
       }`}
+      style={contentStyle}
     >
       {departments &&
         departments.map((department, i) => (
@@ -20,12 +24,12 @@ const ChartNodeDepartments = forwardRef(({ ds, data, departments }, ref) => {
 
           <hr className="mb-2"></hr>
           <li className="mb-3">
-            <h3 className="mb-1">{department.name}</h3>
-            <h3 style={{fontStyle: "normal", fontWeight: 300 }} className="department-type">
+            <h3 className="mb-1" style={contentStyle}>{department.name}</h3>
+            <h3 style={{ ...contentStyle, fontStyle: "normal", fontWeight: 300 }} className="department-type">
               {department.purpose}
             </h3>
             {ds.type && (
-              <h3 className="department-type fw-normal mt-0 text-end">{department.type}</h3>
+              <h3 className="department-type fw-normal mt-0 text-end" style={contentStyle}>{department.type}</h3>
             )}
 
             {department.positions && (
@@ -48,7 +52,7 @@ const ChartNodeDepartments = forwardRef(({ ds, data, departments }, ref) => {
                         >
                           <div className="ms-1">
                             {position.positionType && (
-                              <span className="position">
+                              <span className="position" style={contentStyle}>
                                 {getGenderedPosition(
                                   position.positionType,
                                   position?.person?.gender
@@ -68,7 +72,7 @@ const ChartNodeDepartments = forwardRef(({ ds, data, departments }, ref) => {
                               {position?.person?.lastName}
                             </h4>
                             {position.positionStatus && (
-                              <span className="position">
+                              <span className="position" style={contentStyle}>
                                 {"(" + position.positionStatus + ")"}
                               </span>
                             )}
