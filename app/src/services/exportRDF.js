@@ -267,8 +267,9 @@ function getOrgData(d, excludePersonalData, parentOrg = null, isMainOrg = false)
       newOrgJSONLD["org:hasSite"]["org:siteAddress"] = {
         "@type": "vcard:Address",
         ...(aD.street && {
-          "vcard:street-address": `${aD?.street} ${aD?.housenumber}${
-            aD?.building ? " | Gebäude: " + aD?.building : ""
+          "vcard:street-address": `${aD?.building ? "Firma: " + aD?.building + " | " : ""}${
+            aD?.street
+          } ${aD?.housenumber}${
           }${aD?.room ? " | Raum: " + aD?.room : ""}`,
         }),
         ...(aD.zipCode && { "vcard:postal-code": aD.zipCode }),

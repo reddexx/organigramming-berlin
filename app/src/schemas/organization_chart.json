@@ -523,6 +523,10 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "building": {
+          "type": "string",
+          "title": "Firma"
+        },
         "street": {
           "type": "string",
           "title": "Straße"
@@ -530,10 +534,6 @@
         "housenumber": {
           "type": "string",
           "title": "Hausnummer"
-        },
-        "building": {
-          "type": "string",
-          "title": "Gebäude"
         },
         "room": {
           "type": "string",
