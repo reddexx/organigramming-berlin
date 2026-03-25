@@ -926,12 +926,9 @@ const FreeLayoutCanvas = ({
     onCloseContextMenu?.();
     dragMovedRef.current = false;
     suppressClickRef.current = false;
-
-    if (onClickNode) {
-      onClickNode(nodeMeta.node);
-    }
-
-    selectNodeService.sendSelectedNodeInfo(nodeMeta.node.id);
+    // Do NOT call onClickNode or selectNodeService here —
+    // holding the left mouse button on an anchor starts a connector drag
+    // and must not open the organisation tab or change sidebar selection.
     setConnectorDragState({
       nodeId: nodeMeta.node.id,
       side,
