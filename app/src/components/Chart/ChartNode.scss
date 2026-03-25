@@ -43,14 +43,6 @@
           // outline: 3px solid rgba($yellow, 0.5);
           cursor: pointer;
         }
-        &.position-dragging {
-          z-index: 3;
-
-          .oc-container {
-            transition: none;
-            box-shadow: rgba($gray-700, 0.35) 0px 10px 28px;
-          }
-        }
         &.hide {
           margin-bottom: 14px;
         }
@@ -403,26 +395,6 @@
 
   .chart-container {
     position: relative;
-    /* overlay for programmatically drawn orthogonal connectors */
-    .oc-edges {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 0;
-    }
-    .drawio-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 50;
-      pointer-events: auto;
-      background: transparent;
-    }
     ul.sub-organisations.horizontal {
       > li {
         position: relative;
