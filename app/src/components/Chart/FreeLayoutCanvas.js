@@ -647,6 +647,7 @@ const FreeLayoutCanvas = ({
   const [dragState, setDragState] = useState(null);
   const [connectorDragState, setConnectorDragState] = useState(null);
   const [dragGuides, setDragGuides] = useState([]);
+  const [hoveredConnectorId, setHoveredConnectorId] = useState(null);
 
   const flattenedNodes = useMemo(() => flattenNodes(nodes), [nodes]);
   const autoPositions = useMemo(() => buildAutoPositions(nodes), [nodes]);
@@ -962,9 +963,12 @@ const FreeLayoutCanvas = ({
 
       return {
         id: `${parentId}-${node.id}`,
+        childNodeId: node.id,
         d: createOrthogonalPath(start, end, obstacles, canvasSize),
         manual,
         pending: Boolean(isPendingConnector),
+        actionX: Math.round((start.x + end.x) / 2),
+        actionY: Math.round((start.y + end.y) / 2),
       };
     })
     .filter(Boolean);
@@ -1021,6 +1025,19 @@ const FreeLayoutCanvas = ({
     }
 
     setConnectorDragState(null);
+    setHoveredConnectorId(null);
+  };
+
+  const handleConnectorRemove = async (event, connector) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setHoveredConnectorId(null);
+
+    await onUpdateNodeLayout(connector.childNodeId, {
+      connectorParentAnchor: null,
+      connectorChildAnchor: null,
+    });
   };
 
   const handleAnchorMouseDown = (event, nodeMeta, side) => {
@@ -1113,13 +1130,36 @@ const FreeLayoutCanvas = ({
     >
       <svg className="free-layout-connectors" aria-hidden="true">
         {connectors.map((connector) => (
-          <path
+          <g
             key={connector.id}
-            className={`${connector.manual ? "manual" : "auto"}${
-              connector.pending ? " pending" : ""
-            }`}
-            d={connector.d}
-          />
+            className="connector-group"
+            onMouseEnter={() => setHoveredConnectorId(connector.id)}
+            onMouseLeave={() => setHoveredConnectorId((current) => current === connector.id ? null : current)}
+          >
+            <path
+              className={`connector-hit-area ${connector.manual ? "manual" : "auto"}${
+                connector.pending ? " pending" : ""
+              }`}
+              d={connector.d}
+            />
+            <path
+              className={`${connector.manual ? "manual" : "auto"}${
+                connector.pending ? " pending" : ""
+              }`}
+              d={connector.d}
+            />
+            {hoveredConnectorId === connector.id && (
+              <g
+                className="connector-remove-button"
+                transform={`translate(${connector.actionX}, ${connector.actionY})`}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={(event) => handleConnectorRemove(event, connector)}
+              >
+                <circle r="11" />
+                <path d="M -4 -4 L 4 4 M 4 -4 L -4 4" />
+              </g>
+            )}
+          </g>
         ))}
         {dragGuides.map((guide) =>
           guide.orientation === "vertical" ? (

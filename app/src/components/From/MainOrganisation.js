@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Form } from "react-bootstrap";
 
 const MainOrganisation = (props) => {
-  const { formData, onChange, schema } = props;
+  const { formData, onChange } = props;
   const [isTopOrg, setIsTopOrg] = useState(false);
 
   // check if the org is a top level org
@@ -23,7 +23,7 @@ const MainOrganisation = (props) => {
   return (
     isTopOrg && (
       <Form.Check // prettier-ignore
-        label={schema.title}
+        label=""
         type={"checkbox"}
         id={`checkbox`}
         checked={formData}

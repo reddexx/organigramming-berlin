@@ -278,6 +278,33 @@
           }
         }
 
+        .connector-group {
+          pointer-events: none;
+        }
+
+        .connector-hit-area {
+          stroke: transparent;
+          stroke-width: 14;
+          pointer-events: stroke;
+        }
+
+        .connector-remove-button {
+          pointer-events: all;
+          cursor: pointer;
+
+          circle {
+            fill: $danger;
+            stroke: $white;
+            stroke-width: 2;
+          }
+
+          path {
+            stroke: $white;
+            stroke-width: 2.25;
+            stroke-linecap: round;
+          }
+        }
+
         .alignment-guide {
           stroke: rgba($primary, 0.55);
           stroke-width: 1.5;
