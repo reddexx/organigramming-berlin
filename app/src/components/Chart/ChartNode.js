@@ -165,7 +165,7 @@ const ChartNode = forwardRef(
     const contextMenuHandler = (e) => {
       e.preventDefault();
       if (onClickNode) {
-        onClickNode(ds);
+        onClickNode(ds, { openSidebar: false });
       }
       selectNodeService.sendSelectedNodeInfo(ds.id);
       onContextMenu(e);

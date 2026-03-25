@@ -63,8 +63,10 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
     setDS({ ...data });
   }, [data, update]);
 
-  const readSelectedNode = (nodeData) => {
-    setSelected(nodeData);
+  const readSelectedNode = (nodeData, options = {}) => {
+    if (options.openSidebar !== false) {
+      setSelected(nodeData);
+    }
     setSelectedNode(nodeData);
     // }
   };
@@ -205,9 +207,9 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
         update={update}
         collapsible={false}
         // multipleSelect={isMultipleSelect}
-        onClickNode={(nodeData) => {
+        onClickNode={(nodeData, options) => {
           if (isAdminMode) {
-            readSelectedNode(nodeData);
+            readSelectedNode(nodeData, options);
           } else {
             if (nodeData && nodeData.linkedChartId && typeof onOpenLinkedChart === 'function') {
               onOpenLinkedChart(nodeData.linkedChartId);

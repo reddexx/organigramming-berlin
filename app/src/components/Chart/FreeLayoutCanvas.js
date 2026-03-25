@@ -963,7 +963,11 @@ const FreeLayoutCanvas = ({
     });
   };
 
-  const handleNodeClick = (node) => {
+  const handleNodeClick = (event, node) => {
+    if (event?.button !== undefined && event.button !== 0) {
+      return;
+    }
+
     if (dragMovedRef.current || suppressClickRef.current) {
       suppressClickRef.current = false;
       return;
@@ -982,7 +986,7 @@ const FreeLayoutCanvas = ({
     event.preventDefault();
 
     if (onClickNode) {
-      onClickNode(node);
+      onClickNode(node, { openSidebar: false });
     }
 
     if (contentEditable) {
@@ -1089,7 +1093,7 @@ const FreeLayoutCanvas = ({
                       : " has-child"
                     : " end-node")
                 }
-                onClick={() => handleNodeClick(node)}
+                onClick={(event) => handleNodeClick(event, node)}
                 onMouseDown={(event) => handleNodeMouseDown(event, node)}
                 onContextMenu={(event) => handleContextMenu(event, node)}
                 onDragStart={(event) => event.preventDefault()}
