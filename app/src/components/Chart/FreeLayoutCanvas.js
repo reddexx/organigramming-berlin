@@ -629,8 +629,6 @@ const FreeLayoutCanvas = ({
       if (!wrapperRef.current) {
         return;
       }
-
-      const wrapperRect = wrapperRef.current.getBoundingClientRect();
       const nextRects = {};
 
       flattenedNodes.forEach(({ node }) => {
@@ -640,12 +638,12 @@ const FreeLayoutCanvas = ({
         }
 
         const measuredElement = element.querySelector(".oc-container") || element;
-        const rect = measuredElement.getBoundingClientRect();
+        const position = getPosition(node);
         nextRects[node.id] = {
-          left: rect.left - wrapperRect.left,
-          top: rect.top - wrapperRect.top,
-          width: rect.width,
-          height: rect.height,
+          left: position.x + measuredElement.offsetLeft,
+          top: position.y + measuredElement.offsetTop,
+          width: measuredElement.offsetWidth,
+          height: measuredElement.offsetHeight,
         };
       });
 
