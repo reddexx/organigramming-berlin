@@ -772,7 +772,9 @@ const FreeLayoutCanvas = ({
     };
 
     const handleMouseUp = async (event) => {
-      const targetAnchor = getAnchorElementData(document.elementFromPoint(event.clientX, event.clientY));
+      const targetAnchor =
+        getAnchorElementData(document.elementFromPoint(event.clientX, event.clientY)) ||
+        connectorDragState.hoveredAnchor;
       const sourceAnchor = {
         nodeId: connectorDragState.nodeId,
         side: connectorDragState.side,
@@ -781,6 +783,7 @@ const FreeLayoutCanvas = ({
         ? resolveConnectionSelection(sourceAnchor, targetAnchor, nodeMetaById)
         : null;
 
+      suppressClickRef.current = true;
       setConnectorDragState(null);
 
       if (!resolvedConnection) {
@@ -948,14 +951,6 @@ const FreeLayoutCanvas = ({
 
     event.preventDefault();
     event.stopPropagation();
-
-    if (onClickNode) {
-      onClickNode(node);
-    }
-
-    if (contentEditable) {
-      selectNodeService.sendSelectedNodeInfo(node.id);
-    }
 
     onCloseContextMenu?.();
     setConnectorDragState(null);
