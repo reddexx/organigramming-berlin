@@ -3,11 +3,20 @@ FROM node:18-bullseye-slim AS builder
 ARG REPO=https://github.com/reddexx/organigramming-berlin.git
 ARG BRANCH=main
 
-RUN apt-get update && \
-		apt-get install -y --no-install-recommends \
+RUN /bin/sh -c 'set -eu; success=0; \
+	for attempt in 1 2 3 4 5; do \
+		apt-get update -o Acquire::Retries=5 -o Acquire::ForceIPv4=true && \
+		apt-get install -y --no-install-recommends --fix-missing \
+			-o Acquire::Retries=5 \
+			-o Acquire::ForceIPv4=true \
 			git ca-certificates build-essential python3 make g++ \
 			libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev && \
-		rm -rf /var/lib/apt/lists/*
+			success=1 && break; \
+		echo "apt install failed, retrying (${attempt}/5)"; \
+		sleep $((attempt * 2)); \
+	done; \
+	if [ "$success" -ne 1 ]; then echo "apt install failed after retries"; exit 1; fi; \
+	rm -rf /var/lib/apt/lists/*'
 WORKDIR /src
 
 # Clone the specified repository and branch so the image can be built anywhere
@@ -16,11 +25,7 @@ RUN git clone --depth 1 --branch ${BRANCH} ${REPO} .
 WORKDIR /src/app
 # Use Corepack/Yarn to install dependencies and build (project uses yarn)
  RUN corepack enable && corepack prepare yarn@1.22.19 --activate
-# Configure Yarn to be more resilient in CI builds: increase network timeout and point to an npm mirror if the registry is unstable.
- RUN yarn config set network-timeout 600000 || true
- RUN yarn config set registry https://registry.npmmirror.com || true
-# Retry loop for transient registry errors (e.g. 502). Try up to 5 times with a short backoff.
- RUN /bin/sh -c 'i=0; until [ "$i" -ge 5 ]; do yarn install --silent --no-progress && break; i=$((i+1)); echo "yarn install failed, retrying ($i)"; sleep $((i*2)); done; if [ "$i" -ge 5 ]; then echo "yarn install failed after retries"; exit 1; fi'
+ RUN /bin/sh -c 'set -eu; i=0; until [ "$i" -ge 5 ]; do yarn install --silent --no-progress && break; i=$((i+1)); echo "yarn install failed, retrying ($i/5)"; sleep $((i*2)); done; if [ "$i" -ge 5 ]; then echo "yarn install failed after retries"; exit 1; fi'
 RUN npx browserslist@latest --update-db --silent || true
  ENV NODE_OPTIONS=--openssl-legacy-provider
  RUN yarn build
