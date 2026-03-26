@@ -1,5 +1,6 @@
 import orgChart from "../schemas/organization_chart";
 import typeVocabLookup from "./typeVocabLookup";
+import { getCustomFontOptions } from "./customFonts";
 
 const mergeUniqueSorted = (...groups) => {
   return [...new Set(groups.flat().filter((item) => typeof item === "string" && item.trim()))].sort(
@@ -28,6 +29,16 @@ export function getDefinitions(data = null) {
   const customRoles = data?.settings?.roleOptions || [];
   const customDepartments = data?.settings?.departmentOptions || [];
   const customAdditionalDesignations = data?.settings?.additionalDesignationOptions || [];
+  const customFontOptions = getCustomFontOptions(data?.settings?.customFonts || []);
+
+  const appendCustomFontOptions = (schemaNode) => {
+    customFontOptions.forEach((fontOption) => {
+      if (!schemaNode.enum.includes(fontOption.value)) {
+        schemaNode.enum.push(fontOption.value);
+        schemaNode.enumNames.push(fontOption.label);
+      }
+    });
+  };
 
   definitions.definitions.organisation.properties.type.examples = mergeUniqueSorted(
     orgs,
@@ -50,6 +61,17 @@ export function getDefinitions(data = null) {
   definitions.definitions.position.properties.positionStatus.examples = mergeUniqueSorted(
     positionStatus,
     customAdditionalDesignations
+  );
+
+  appendCustomFontOptions(definitions.definitions.document.properties.titleFontFamily);
+  appendCustomFontOptions(
+    definitions.definitions.organisation.properties.layout.properties.headingFontFamily
+  );
+  appendCustomFontOptions(
+    definitions.definitions.organisation.properties.layout.properties.contentFontFamily
+  );
+  appendCustomFontOptions(
+    definitions.definitions.organisation.properties.layout.properties.personFontFamily
   );
 
   return definitions;

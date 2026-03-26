@@ -887,6 +887,31 @@
             "title": "Zusatzbezeichnung"
           },
           "default": []
+        },
+        "customFonts": {
+          "type": "array",
+          "title": "Importierte Schriftarten",
+          "default": [],
+          "items": {
+            "type": "object",
+            "title": "Schriftart",
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string",
+                "title": "Anzeigename"
+              },
+              "family": {
+                "type": "string",
+                "title": "Font-Familie"
+              },
+              "source": {
+                "type": "string",
+                "title": "Schriftdatei",
+                "format": "data-url"
+              }
+            }
+          }
         }
       }
     }

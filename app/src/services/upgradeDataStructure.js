@@ -1,5 +1,6 @@
 import initDocument from "../data/initDocument";
 import getURI from "./getURI";
+import { sanitizeCustomFonts } from "./customFonts";
 
 const CONNECTOR_ANCHOR_SIDES = ["top", "right", "bottom", "left"];
 
@@ -282,6 +283,24 @@ export const upgradeDataStructure = (data) => {
   if (data.document?.layoutMode === undefined) {
     data.document.layoutMode = "tree";
   }
+
+  if (!data.settings) {
+    data.settings = {};
+  }
+
+  if (!Array.isArray(data.settings.roleOptions)) {
+    data.settings.roleOptions = [];
+  }
+
+  if (!Array.isArray(data.settings.departmentOptions)) {
+    data.settings.departmentOptions = [];
+  }
+
+  if (!Array.isArray(data.settings.additionalDesignationOptions)) {
+    data.settings.additionalDesignationOptions = [];
+  }
+
+  data.settings.customFonts = sanitizeCustomFonts(data.settings.customFonts);
 
   // if doc has prop uriSameAs -> move it to sameAsUris
   if (data.document.uri.uriSameAs !== undefined) {

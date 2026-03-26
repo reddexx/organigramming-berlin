@@ -7,6 +7,11 @@ import { validationRules } from "../../validation/validationRules";
 import Form from "@rjsf/bootstrap-4";
 import { getDefinitions } from "../../services/getDefinitions";
 import ArrayFieldTemplate from "../From/ArrayFieldTemplate";
+import FontFileWidget from "../From/FontFileWidget";
+import {
+  sanitizeCustomFonts,
+  getCustomFontFamilyFromSource,
+} from "../../services/customFonts";
 
 const SettingsModal = (props) => {
   const [formData, setFormData] = useState({ ...props.data });
@@ -53,10 +58,21 @@ const SettingsModal = (props) => {
       "ui:headless": true,
       "ui:order": [
         "validator",
+        "customFonts",
         "roleOptions",
         "departmentOptions",
         "additionalDesignationOptions",
       ],
+      customFonts: {
+        "ui:options": {
+          orderable: false,
+        },
+        items: {
+          source: {
+            "ui:widget": FontFileWidget,
+          },
+        },
+      },
       roleOptions: {
         "ui:options": {
           orderable: false,
@@ -76,14 +92,42 @@ const SettingsModal = (props) => {
   };
 
   const onBlur = () => {
-    props.sendDataUp(formData);
+    props.sendDataUp({
+      ...formData,
+      settings: {
+        ...(formData.settings || {}),
+        customFonts: sanitizeCustomFonts(formData?.settings?.customFonts),
+      },
+    });
   };
 
   const onChange = (e) => {
-    const warningMessages = getErrorMsg(e.formData);
+    const nextSettings = e.formData?.settings || {};
+    const nextCustomFonts = Array.isArray(nextSettings.customFonts)
+      ? nextSettings.customFonts.map((font) => {
+          const nextFamily =
+            (font?.family || "").trim() ||
+            getCustomFontFamilyFromSource(font?.source);
+          const nextLabel = (font?.label || "").trim() || nextFamily;
+
+          return {
+            ...font,
+            family: nextFamily,
+            label: nextLabel,
+          };
+        })
+      : [];
+    const nextFormData = {
+      ...e.formData,
+      settings: {
+        ...nextSettings,
+        customFonts: nextCustomFonts,
+      },
+    };
+    const warningMessages = getErrorMsg(nextFormData);
     setWarningMessages(warningMessages);
 
-    setFormData(e.formData);
+    setFormData(nextFormData);
   };
 
   const resetSetting = () => {
@@ -115,7 +159,8 @@ const SettingsModal = (props) => {
             </Form>
             <p>
               Hier können Sie Validierung sowie Vorschlagslisten für Rollen,
-              Abteilungen und Zusatzbezeichnungen verwalten.
+              Abteilungen, Zusatzbezeichnungen und importierte Schriftarten
+              verwalten.
             </p>
             {warningMessages && warningMessages?.length !== 0 && (
               <>

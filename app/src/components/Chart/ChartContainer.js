@@ -20,6 +20,7 @@ import ChartNode from "./ChartNode";
 import FreeLayoutCanvas from "./FreeLayoutCanvas";
 import "./ChartContainer.scss";
 import { exportRDF } from "../../services/exportRDF";
+import { buildCustomFontFaceCss } from "../../services/customFonts";
 
 import "../../services/registerFiles";
 
@@ -117,6 +118,7 @@ const ChartContainer = forwardRef(
 
     const dsDigger = new JSONDigger(node, "id", "organisations");
     const isFreeLayout = data?.document?.layoutMode === "free";
+    const customFontFaceCss = buildCustomFontFaceCss(data?.settings?.customFonts || []);
 
     useEffect(() => {
       resetViewHandler();
@@ -660,6 +662,7 @@ const ChartContainer = forwardRef(
             onMouseMove={enablePan && (panning || potentialPan) ? panHandler : undefined}
             onMouseUp={panning || potentialPan ? panEndHandler : undefined}
           >
+            {customFontFaceCss && <style>{customFontFaceCss}</style>}
             <div
               id="paper"
               ref={paper}

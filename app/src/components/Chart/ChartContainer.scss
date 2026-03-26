@@ -315,15 +315,15 @@
 
       @keyframes free-layout-anchor-pulse {
         0% {
-          box-shadow: 0 0 0 0 rgba($primary, 0.14);
+          box-shadow: 0 0 0 0 rgba(#1f7aff, 0.24);
         }
 
         70% {
-          box-shadow: 0 0 0 8px rgba($primary, 0);
+          box-shadow: 0 0 0 10px rgba(#1f7aff, 0);
         }
 
         100% {
-          box-shadow: 0 0 0 0 rgba($primary, 0);
+          box-shadow: 0 0 0 0 rgba(#1f7aff, 0);
         }
       }
 
@@ -409,25 +409,25 @@
               border-color 120ms ease-out;
 
             &.connectable {
-              border-color: $primary;
+              border-color: #1f7aff;
             }
 
             &.active {
-              background-color: $primary;
-              border-color: $primary;
-              box-shadow: 0 0 0 3px rgba($primary, 0.18);
+              background-color: #1f7aff;
+              border-color: #1f7aff;
+              box-shadow: 0 0 0 3px rgba(#1f7aff, 0.22);
               transform: var(--anchor-transform) scale(1.15);
             }
 
             &.hovered {
-              background-color: rgba($primary, 0.16);
-              border-color: $primary;
-              box-shadow: 0 0 0 4px rgba($primary, 0.16);
+              background-color: rgba(#1f7aff, 0.16);
+              border-color: #1f7aff;
+              box-shadow: 0 0 0 4px rgba(#1f7aff, 0.18);
               transform: var(--anchor-transform) scale(1.22);
             }
 
             &:focus-visible {
-              outline: 2px solid rgba($primary, 0.45);
+              outline: 2px solid rgba(#1f7aff, 0.45);
               outline-offset: 2px;
             }
 
