@@ -718,10 +718,33 @@ const createOrthogonalPathPoints = (startAnchor, endAnchor, obstacles, canvasSiz
     return dedupePoints(clearCandidate);
   }
 
-  points.push(endLead);
-  points.push({ x: endAnchor.x, y: endAnchor.y });
+  // No clear straight candidate found. Build an orthogonal elbow fallback
+  const elbowA = [
+    { x: startAnchor.x, y: startAnchor.y },
+    startLead,
+    { x: startLead.x, y: endLead.y },
+    endLead,
+    { x: endAnchor.x, y: endAnchor.y },
+  ];
 
-  return dedupePoints(points);
+  const elbowB = [
+    { x: startAnchor.x, y: startAnchor.y },
+    startLead,
+    { x: endLead.x, y: startLead.y },
+    endLead,
+    { x: endAnchor.x, y: endAnchor.y },
+  ];
+
+  if (!pathIntersectsObstacles(dedupePoints(elbowA), obstacles)) {
+    return dedupePoints(elbowA);
+  }
+
+  if (!pathIntersectsObstacles(dedupePoints(elbowB), obstacles)) {
+    return dedupePoints(elbowB);
+  }
+
+  // As a last resort return elbowA to avoid diagonal segment rendering
+  return dedupePoints(elbowA);
 };
 
 const buildAutoPositions = (nodes) => {
