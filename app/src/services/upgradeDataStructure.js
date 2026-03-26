@@ -3,6 +3,37 @@ import getURI from "./getURI";
 
 const CONNECTOR_ANCHOR_SIDES = ["top", "right", "bottom", "left"];
 
+function sanitizeFreeConnections(document = {}, validNodeIds = new Set()) {
+  const freeConnections = Array.isArray(document.freeConnections)
+    ? document.freeConnections
+    : [];
+
+  document.freeConnections = freeConnections.filter((connection) => {
+    return Boolean(
+      connection?.id &&
+        connection?.sourceNodeId &&
+        connection?.targetNodeId &&
+        connection.sourceNodeId !== connection.targetNodeId &&
+        validNodeIds.has(connection.sourceNodeId) &&
+        validNodeIds.has(connection.targetNodeId) &&
+        CONNECTOR_ANCHOR_SIDES.includes(connection.sourceAnchor) &&
+        CONNECTOR_ANCHOR_SIDES.includes(connection.targetAnchor)
+    );
+  });
+}
+
+function collectOrganisationIds(data, ids = new Set()) {
+  data.organisations?.forEach((org) => {
+    if (org?.id) {
+      ids.add(org.id);
+    }
+
+    collectOrganisationIds(org, ids);
+  });
+
+  return ids;
+}
+
 function addUrisToOrgsAndEmployees(data) {
   data.organisations?.forEach((org) => {
     // add an URI to all orgs
@@ -163,6 +194,10 @@ function addNewPropsToOrgs(data) {
       delete org.layout.connectorChildAnchor;
     }
 
+    if (typeof org.layout.connectorHidden !== "boolean") {
+      org.layout.connectorHidden = false;
+    }
+
     if (!org?.background && !org?.layout) {
       org.background = {
         color: "",
@@ -264,6 +299,11 @@ export const upgradeDataStructure = (data) => {
 
   // rearrange data to move employees to position.person logic
   migrateEmployeesToPositionLogic(data);
+
+  if (!Array.isArray(data.document.freeConnections)) {
+    data.document.freeConnections = [];
+  }
+  sanitizeFreeConnections(data.document, collectOrganisationIds(data));
 
   return data;
 };

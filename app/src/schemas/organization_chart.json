@@ -81,6 +81,35 @@
           "enum": ["tree", "free"],
           "enumNames": ["Baum", "Frei wie Draw.io"]
         },
+        "freeConnections": {
+          "type": "array",
+          "title": "Freie Verbindungen",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sourceNodeId": {
+                "type": "string"
+              },
+              "targetNodeId": {
+                "type": "string"
+              },
+              "sourceAnchor": {
+                "type": "string",
+                "enum": ["top", "right", "bottom", "left"]
+              },
+              "targetAnchor": {
+                "type": "string",
+                "enum": ["top", "right", "bottom", "left"]
+              }
+            },
+            "required": ["id", "sourceNodeId", "targetNodeId", "sourceAnchor", "targetAnchor"]
+          }
+        },
         "uri": {
           "$ref": "#/definitions/uri"
         }
@@ -276,6 +305,11 @@
               "title": "Connector Anker Kindknoten",
               "type": "string",
               "enum": ["top", "right", "bottom", "left"]
+            },
+            "connectorHidden": {
+              "title": "Connector ausgeblendet",
+              "type": "boolean",
+              "default": false
             },
             "grid": {
               "title": "Anordnung",

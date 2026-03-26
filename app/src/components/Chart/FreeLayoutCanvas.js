@@ -6,15 +6,18 @@ import ChartNodeCard from "./ChartNodeCard";
 
 const propTypes = {
   nodes: PropTypes.array,
+  freeConnections: PropTypes.array,
   contentEditable: PropTypes.bool,
   onClickNode: PropTypes.func,
   onContextMenu: PropTypes.func,
   onCloseContextMenu: PropTypes.func,
   onUpdateNodeLayout: PropTypes.func.isRequired,
+  onUpdateFreeConnections: PropTypes.func.isRequired,
 };
 
 const defaultProps = {
   nodes: [],
+  freeConnections: [],
   contentEditable: true,
   onClickNode: null,
   onContextMenu: null,
@@ -99,6 +102,9 @@ const chooseAnchorPair = (parentRect, childRect) => {
 
 const isValidAnchorSide = (side) => ANCHOR_SIDES.includes(side);
 
+const getConnectionPairKey = (firstNodeId, secondNodeId) =>
+  [firstNodeId, secondNodeId].sort().join("::");
+
 const getConnectionAnchorPair = (childNode, parentRect, childRect) => {
   const parentAnchors = getAnchorsFromRect(parentRect);
   const childAnchors = getAnchorsFromRect(childRect);
@@ -119,7 +125,12 @@ const getConnectionAnchorPair = (childNode, parentRect, childRect) => {
   };
 };
 
-const resolveConnectionSelection = (firstSelection, secondSelection, nodeMetaById) => {
+const resolveConnectionSelection = (
+  firstSelection,
+  secondSelection,
+  nodeMetaById,
+  freeConnections = []
+) => {
   const firstMeta = nodeMetaById[firstSelection.nodeId];
   const secondMeta = nodeMetaById[secondSelection.nodeId];
 
@@ -129,6 +140,7 @@ const resolveConnectionSelection = (firstSelection, secondSelection, nodeMetaByI
 
   if (firstMeta.parentId === secondSelection.nodeId) {
     return {
+      type: "hierarchy",
       childNodeId: firstSelection.nodeId,
       parentAnchor: secondSelection.side,
       childAnchor: firstSelection.side,
@@ -137,13 +149,32 @@ const resolveConnectionSelection = (firstSelection, secondSelection, nodeMetaByI
 
   if (secondMeta.parentId === firstSelection.nodeId) {
     return {
+      type: "hierarchy",
       childNodeId: secondSelection.nodeId,
       parentAnchor: firstSelection.side,
       childAnchor: secondSelection.side,
     };
   }
 
-  return null;
+  const existingFreeConnection = freeConnections.find(
+    (connection) =>
+      getConnectionPairKey(connection.sourceNodeId, connection.targetNodeId) ===
+      getConnectionPairKey(firstSelection.nodeId, secondSelection.nodeId)
+  );
+
+  return {
+    type: "free",
+    connection: {
+      ...(existingFreeConnection || {}),
+      id:
+        existingFreeConnection?.id ||
+        `free-connection-${getConnectionPairKey(firstSelection.nodeId, secondSelection.nodeId)}`,
+      sourceNodeId: firstSelection.nodeId,
+      targetNodeId: secondSelection.nodeId,
+      sourceAnchor: firstSelection.side,
+      targetAnchor: secondSelection.side,
+    },
+  };
 };
 
 const getAnchorElementData = (element) => {
@@ -164,25 +195,23 @@ const getAnchorElementData = (element) => {
 };
 
 const getConnectableNodeIds = (sourceNodeId, nodeMetaById) => {
-  const sourceMeta = nodeMetaById[sourceNodeId];
-
-  if (!sourceMeta) {
+  if (!nodeMetaById[sourceNodeId]) {
     return [];
   }
 
-  const nextIds = [];
+  return Object.keys(nodeMetaById).filter((nodeId) => nodeId !== sourceNodeId);
+};
 
-  if (sourceMeta.parentId) {
-    nextIds.push(sourceMeta.parentId);
-  }
-
-  Object.values(nodeMetaById).forEach((nodeMeta) => {
-    if (nodeMeta.parentId === sourceNodeId) {
-      nextIds.push(nodeMeta.node.id);
-    }
-  });
-
-  return nextIds;
+const isValidFreeConnection = (connection, nodeMetaById) => {
+  return Boolean(
+    connection?.sourceNodeId &&
+      connection?.targetNodeId &&
+      connection.sourceNodeId !== connection.targetNodeId &&
+      nodeMetaById[connection.sourceNodeId] &&
+      nodeMetaById[connection.targetNodeId] &&
+      isValidAnchorSide(connection.sourceAnchor) &&
+      isValidAnchorSide(connection.targetAnchor)
+  );
 };
 
 const getClosestAnchorSelection = (pointer, nodeIds, nodeRects, maxDistance) => {
@@ -663,11 +692,13 @@ const buildAutoPositions = (nodes) => {
 
 const FreeLayoutCanvas = ({
   nodes,
+  freeConnections,
   contentEditable,
   onClickNode,
   onContextMenu,
   onCloseContextMenu,
   onUpdateNodeLayout,
+  onUpdateFreeConnections,
 }) => {
   const wrapperRef = useRef();
   const nodeRefs = useRef({});
@@ -693,6 +724,10 @@ const FreeLayoutCanvas = ({
         return result;
       }, {}),
     [flattenedNodes]
+  );
+  const validFreeConnections = useMemo(
+    () => (freeConnections || []).filter((connection) => isValidFreeConnection(connection, nodeMetaById)),
+    [freeConnections, nodeMetaById]
   );
 
   const getPosition = useCallback((node) => {
@@ -919,7 +954,7 @@ const FreeLayoutCanvas = ({
         side: activeState.side,
       };
       const resolvedConnection = targetAnchor
-        ? resolveConnectionSelection(sourceAnchor, targetAnchor, nodeMetaById)
+        ? resolveConnectionSelection(sourceAnchor, targetAnchor, nodeMetaById, validFreeConnections)
         : null;
 
       suppressClickRef.current = true;
@@ -929,9 +964,27 @@ const FreeLayoutCanvas = ({
         return;
       }
 
-      await onUpdateNodeLayout(resolvedConnection.childNodeId, {
-        connectorParentAnchor: resolvedConnection.parentAnchor,
-        connectorChildAnchor: resolvedConnection.childAnchor,
+      if (resolvedConnection.type === "hierarchy") {
+        await onUpdateNodeLayout(resolvedConnection.childNodeId, {
+          connectorParentAnchor: resolvedConnection.parentAnchor,
+          connectorChildAnchor: resolvedConnection.childAnchor,
+          connectorHidden: false,
+        });
+        return;
+      }
+
+      await onUpdateFreeConnections((currentConnections) => {
+        const nextConnections = (currentConnections || []).filter(
+          (connection) =>
+            getConnectionPairKey(connection.sourceNodeId, connection.targetNodeId) !==
+            getConnectionPairKey(
+              resolvedConnection.connection.sourceNodeId,
+              resolvedConnection.connection.targetNodeId
+            )
+        );
+
+        nextConnections.push(resolvedConnection.connection);
+        return nextConnections;
       });
     };
 
@@ -949,7 +1002,14 @@ const FreeLayoutCanvas = ({
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("blur", handleWindowBlur);
     };
-  }, [connectorDragState, getCanvasPointer, nodeMetaById, onUpdateNodeLayout]);
+  }, [
+    connectorDragState,
+    getCanvasPointer,
+    nodeMetaById,
+    onUpdateFreeConnections,
+    onUpdateNodeLayout,
+    validFreeConnections,
+  ]);
 
   const canvasSize = useMemo(() => {
     const measuredWidths = Object.values(nodeRects).map(
@@ -974,8 +1034,8 @@ const FreeLayoutCanvas = ({
     };
   }, [flattenedNodes, nodeRects, getPosition]);
 
-  const connectors = flattenedNodes
-    .filter(({ parentId }) => parentId)
+  const hierarchyConnectors = flattenedNodes
+    .filter(({ node, parentId }) => parentId && node?.layout?.connectorHidden !== true)
     .map(({ node, parentId }) => {
       const childRect = nodeRects[node.id];
       const parentRect = nodeRects[parentId];
@@ -993,7 +1053,8 @@ const FreeLayoutCanvas = ({
         (connectorDragState.nodeId === node.id || connectorDragState.nodeId === parentId);
 
       return {
-        id: `${parentId}-${node.id}`,
+        id: `hierarchy:${parentId}-${node.id}`,
+        type: "hierarchy",
         childNodeId: node.id,
         d: createOrthogonalPath(start, end, obstacles, canvasSize),
         manual,
@@ -1003,9 +1064,40 @@ const FreeLayoutCanvas = ({
       };
     })
     .filter(Boolean);
-  const pendingNodeMeta = connectorDragState
-    ? nodeMetaById[connectorDragState.nodeId]
-    : null;
+  const freeLayoutConnectors = validFreeConnections
+    .map((connection) => {
+      const sourceRect = nodeRects[connection.sourceNodeId];
+      const targetRect = nodeRects[connection.targetNodeId];
+
+      if (!sourceRect || !targetRect) {
+        return null;
+      }
+
+      const start = getAnchorsFromRect(sourceRect)[connection.sourceAnchor];
+      const end = getAnchorsFromRect(targetRect)[connection.targetAnchor];
+      const obstacles = Object.entries(nodeRects)
+        .filter(
+          ([id]) => id !== connection.sourceNodeId && id !== connection.targetNodeId
+        )
+        .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
+      const isPendingConnector =
+        connectorDragState &&
+        (connectorDragState.nodeId === connection.sourceNodeId ||
+          connectorDragState.nodeId === connection.targetNodeId);
+
+      return {
+        id: `free:${connection.id}`,
+        type: "free",
+        connectionId: connection.id,
+        d: createOrthogonalPath(start, end, obstacles, canvasSize),
+        manual: true,
+        pending: Boolean(isPendingConnector),
+        actionX: Math.round((start.x + end.x) / 2),
+        actionY: Math.round((start.y + end.y) / 2),
+      };
+    })
+    .filter(Boolean);
+  const connectors = [...hierarchyConnectors, ...freeLayoutConnectors];
 
   const previewConnector = useMemo(() => {
     if (!connectorDragState) {
@@ -1065,9 +1157,19 @@ const FreeLayoutCanvas = ({
 
     setHoveredConnectorId(null);
 
+    if (connector.type === "free") {
+      await onUpdateFreeConnections((currentConnections) =>
+        (currentConnections || []).filter(
+          (connection) => connection.id !== connector.connectionId
+        )
+      );
+      return;
+    }
+
     await onUpdateNodeLayout(connector.childNodeId, {
       connectorParentAnchor: null,
       connectorChildAnchor: null,
+      connectorHidden: true,
     });
   };
 
@@ -1217,15 +1319,13 @@ const FreeLayoutCanvas = ({
       </svg>
       <ul className="free-layout-list">
         {flattenedNodes.map((nodeMeta) => {
-          const { node, level, parentId } = nodeMeta;
+          const { node, level } = nodeMeta;
           const position = getPosition(node);
           const isDragging = dragState?.node?.id === node.id;
           const isPendingNode = connectorDragState?.nodeId === node.id;
           const isHoveredTarget = connectorDragState?.hoveredAnchor?.nodeId === node.id;
           const isConnectableNode = Boolean(
-            pendingNodeMeta &&
-              connectorDragState.nodeId !== node.id &&
-              (pendingNodeMeta.parentId === node.id || parentId === connectorDragState.nodeId)
+            connectorDragState && connectorDragState.nodeId !== node.id
           );
           const showAnchors =
             contentEditable &&

@@ -162,6 +162,25 @@ const ChartContainer = forwardRef(
       sendDataUp({ ...data, organisations: [...dsDigger.ds.organisations] });
     };
 
+    const updateFreeConnections = async (nextConnectionsOrUpdater) => {
+      const currentConnections = Array.isArray(data?.document?.freeConnections)
+        ? data.document.freeConnections
+        : [];
+      const nextConnections =
+        typeof nextConnectionsOrUpdater === "function"
+          ? nextConnectionsOrUpdater(currentConnections)
+          : nextConnectionsOrUpdater;
+
+      sendDataUp({
+        ...data,
+        document: {
+          ...data.document,
+          freeConnections: nextConnections,
+        },
+        organisations: [...dsDigger.ds.organisations],
+      });
+    };
+
     const clickChartHandler = (event) => {
       if (!event.target.closest(".oc-node")) {
         if (onClickChart) {
@@ -739,11 +758,13 @@ const ChartContainer = forwardRef(
                   {isFreeLayout ? (
                     <FreeLayoutCanvas
                       nodes={node.organisations}
+                      freeConnections={data?.document?.freeConnections || []}
                       contentEditable={contentEditable}
                       onClickNode={onClickNode}
                       onContextMenu={onContextMenu}
                       onCloseContextMenu={onCloseContextMenu}
                       onUpdateNodeLayout={updateNodeLayout}
+                      onUpdateFreeConnections={updateFreeConnections}
                     />
                   ) : (
                     <ul>

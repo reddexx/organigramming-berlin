@@ -208,6 +208,9 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         connectorChildAnchor: {
           "ui:widget": "hidden",
         },
+        connectorHidden: {
+          "ui:widget": "hidden",
+        },
       },
       organisations: {
         "ui:headless": true,

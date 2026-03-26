@@ -101,6 +101,9 @@ const DocumentTab = ({ data, sendDataUp }) => {
           inline: true,
         },
       },
+      freeConnections: {
+        "ui:widget": "hidden",
+      },
       uri: {
         "ui:headless": true,
         "ui:field": "UriSearch",

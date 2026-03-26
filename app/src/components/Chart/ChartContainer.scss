@@ -253,7 +253,7 @@
         width: 100%;
         height: 100%;
         overflow: visible;
-        pointer-events: none;
+        pointer-events: auto;
         z-index: 0;
 
         path {
@@ -262,6 +262,7 @@
           stroke-width: 2;
           stroke-linecap: round;
           stroke-linejoin: round;
+          pointer-events: none;
 
           &.manual {
             stroke: darken($secondary, 10%);
@@ -279,7 +280,7 @@
         }
 
         .connector-group {
-          pointer-events: none;
+          pointer-events: auto;
         }
 
         .connector-hit-area {
