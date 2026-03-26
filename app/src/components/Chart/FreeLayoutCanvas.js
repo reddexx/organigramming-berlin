@@ -1219,8 +1219,7 @@ const FreeLayoutCanvas = ({
         return null;
       }
 
-      const start = getAnchorsFromRect(sourceRect)[connection.sourceAnchor];
-      const end = getAnchorsFromRect(targetRect)[connection.targetAnchor];
+      
       const obstacles = Object.entries(nodeRects)
         .filter(
           ([id]) => id !== connection.sourceNodeId && id !== connection.targetNodeId
