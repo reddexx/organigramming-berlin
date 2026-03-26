@@ -321,7 +321,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
                   d="M1 3.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13a.5.5 0 0 1-.5-.5zM8 6a.5.5 0 0 1 .5.5v5.793l2.146-2.147a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 .708-.708L7.5 12.293V6.5A.5.5 0 0 1 8 6z"
                 />
               </svg>{" "}
-              Neue Unterorganisation
+              {data?.document?.layoutMode === "free" ? "Node Hinzufügen" : "Neue Unterorganisation"}
             </Button>
           </li>
 
@@ -331,7 +331,8 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
                 addSiblingNode();
               }}
               className="dropdown-item"
-              disabled={!isAdminMode}
+              disabled={!isAdminMode || data?.document?.layoutMode === "free"}
+              title={data?.document?.layoutMode === "free" ? "Deaktiviert im flexiblen Modus" : undefined}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

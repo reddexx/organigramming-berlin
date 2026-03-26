@@ -28,7 +28,7 @@ const LEVEL_GAP = 220;
 const SIBLING_GAP = 56;
 const START_X = 80;
 const START_Y = 40;
-const CANVAS_PADDING = 160;
+const CANVAS_PADDING = 80;
 const ANCHOR_OFFSET = 24;
 const OBSTACLE_PADDING = 18;
 const ANCHOR_SIDES = ["top", "right", "bottom", "left"];
@@ -850,7 +850,8 @@ const FreeLayoutCanvas = ({
 
   const canvasOffset = useMemo(
     () => ({
-      x: CANVAS_PADDING - contentBounds.minX,
+      // allow free movement to the left edge of the browser (no invisible left wall)
+      x: -contentBounds.minX,
       y: CANVAS_PADDING - contentBounds.minY,
     }),
     [contentBounds]
@@ -1238,11 +1239,20 @@ const FreeLayoutCanvas = ({
         return null;
       }
 
+      // Force an orthogonal preview direction based on pointer delta
+      const deltaX = connectorDragState.pointer.x - sourceAnchor.x;
+      const deltaY = connectorDragState.pointer.y - sourceAnchor.y;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      const dx = absX > absY ? Math.sign(deltaX) : 0;
+      const dy = dx === 0 ? (deltaY === 0 ? sourceAnchor.dy : Math.sign(deltaY)) : 0;
+
       targetAnchor = {
         x: connectorDragState.pointer.x,
         y: connectorDragState.pointer.y,
-        dx: sourceAnchor.dx,
-        dy: sourceAnchor.dy,
+        dx,
+        dy,
       };
     }
 
