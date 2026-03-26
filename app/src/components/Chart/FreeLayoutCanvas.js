@@ -220,6 +220,41 @@ const getClosestAnchorSelection = (pointer, nodeIds, nodeRects, maxDistance) => 
     : null;
 };
 
+const getAnchorSelectionAtPointer = ({
+  clientX,
+  clientY,
+  connectableNodeIds,
+  nodeRects,
+  getCanvasPointer,
+}) => {
+  const elementsAtPointer = document.elementsFromPoint
+    ? document.elementsFromPoint(clientX, clientY)
+    : [document.elementFromPoint(clientX, clientY)].filter(Boolean);
+  const exactAnchor = elementsAtPointer
+    .map((element) => getAnchorElementData(element))
+    .find((anchor) => anchor && connectableNodeIds.includes(anchor.nodeId));
+  const canvasPointer = getCanvasPointer(clientX, clientY);
+
+  if (exactAnchor) {
+    return {
+      pointer: canvasPointer,
+      anchor: exactAnchor,
+    };
+  }
+
+  return {
+    pointer: canvasPointer,
+    anchor: canvasPointer
+      ? getClosestAnchorSelection(
+          canvasPointer,
+          connectableNodeIds,
+          nodeRects,
+          Math.max(ANCHOR_FOCUS_DISTANCE, 64)
+        )
+      : null,
+  };
+};
+
 const expandRect = (rect, padding) => ({
   left: rect.left - padding,
   top: rect.top - padding,
@@ -841,29 +876,19 @@ const FreeLayoutCanvas = ({
           return current;
         }
 
-        const hoveredElement = document.elementFromPoint(event.clientX, event.clientY);
-        const exactAnchor = getAnchorElementData(hoveredElement);
-        const canvasPointer = getCanvasPointer(event.clientX, event.clientY);
         const connectableNodeIds = getConnectableNodeIds(current.nodeId, nodeMetaById);
-
-        let hoveredAnchor =
-          exactAnchor && connectableNodeIds.includes(exactAnchor.nodeId)
-            ? exactAnchor
-            : null;
-
-        if (!hoveredAnchor && canvasPointer) {
-          hoveredAnchor = getClosestAnchorSelection(
-            canvasPointer,
-            connectableNodeIds,
-            nodeRectsRef.current,
-            Math.max(ANCHOR_FOCUS_DISTANCE, 64)
-          );
-        }
+        const { pointer, anchor } = getAnchorSelectionAtPointer({
+          clientX: event.clientX,
+          clientY: event.clientY,
+          connectableNodeIds,
+          nodeRects: nodeRectsRef.current,
+          getCanvasPointer,
+        });
 
         return {
           ...current,
-          pointer: canvasPointer,
-          hoveredAnchor,
+          pointer,
+          hoveredAnchor: anchor,
         };
       });
     };
@@ -880,9 +905,15 @@ const FreeLayoutCanvas = ({
         return;
       }
 
-      const targetAnchor =
-        getAnchorElementData(document.elementFromPoint(event.clientX, event.clientY)) ||
-        activeState.hoveredAnchor;
+      const connectableNodeIds = getConnectableNodeIds(activeState.nodeId, nodeMetaById);
+      const { anchor: targetAnchor } = getAnchorSelectionAtPointer({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        connectableNodeIds,
+        nodeRects: nodeRectsRef.current,
+        getCanvasPointer,
+      });
+
       const sourceAnchor = {
         nodeId: activeState.nodeId,
         side: activeState.side,
