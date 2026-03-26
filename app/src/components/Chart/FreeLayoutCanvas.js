@@ -848,14 +848,24 @@ const FreeLayoutCanvas = ({
     };
   }, [flattenedNodes, getPosition, nodeRects]);
 
-  const canvasOffset = useMemo(
-    () => ({
-      // allow free movement to the left edge of the browser (no invisible left wall)
-      x: -contentBounds.minX,
-      y: CANVAS_PADDING - contentBounds.minY,
-    }),
-    [contentBounds]
-  );
+  const canvasSize = useMemo(() => {
+    const contentWidth = Math.max(0, contentBounds.maxX - contentBounds.minX);
+    const contentHeight = Math.max(0, contentBounds.maxY - contentBounds.minY);
+
+    return {
+      width: Math.max(1400, contentWidth + CANVAS_PADDING * 2),
+      height: Math.max(900, contentHeight + CANVAS_PADDING * 2),
+      contentWidth,
+      contentHeight,
+    };
+  }, [contentBounds]);
+
+  const canvasOffset = useMemo(() => {
+    const x = Math.round((canvasSize.width - canvasSize.contentWidth) / 2) - contentBounds.minX;
+    const y = Math.round((canvasSize.height - canvasSize.contentHeight) / 2) - contentBounds.minY;
+
+    return { x, y };
+  }, [canvasSize, contentBounds]);
 
   const getDisplayPosition = useCallback(
     (node) => {
@@ -1138,12 +1148,7 @@ const FreeLayoutCanvas = ({
     validFreeConnections,
   ]);
 
-  const canvasSize = useMemo(() => {
-    return {
-      width: Math.max(1400, contentBounds.maxX - contentBounds.minX + CANVAS_PADDING * 2),
-      height: Math.max(900, contentBounds.maxY - contentBounds.minY + CANVAS_PADDING * 2),
-    };
-  }, [contentBounds]);
+  
 
   const hierarchyConnectors = flattenedNodes
     .filter(({ node, parentId }) => parentId && node?.layout?.connectorHidden !== true)
