@@ -1,4 +1,7 @@
 export const getJoyrideSettings = (controlLayer) => {
+  const newDocRef = controlLayer?.current?.newDocRef || "body";
+  const docInfoRef = controlLayer?.current?.docInfoRef || ".sidebar";
+
   return {
     run: false,
     steps: [
@@ -15,7 +18,7 @@ export const getJoyrideSettings = (controlLayer) => {
             zIndex: 10000,
           },
         },
-        target: controlLayer.current.newDocRef,
+        target: newDocRef,
         title: "Neues Dokument",
       },
       {
@@ -31,7 +34,7 @@ export const getJoyrideSettings = (controlLayer) => {
         disableBeacon: true,
         spotlightClicks: false,
         disableOverlayClose: true,
-        target: controlLayer.current.docInfoRef,
+        target: docInfoRef,
         title: "Dokumentinformationen und -einstellungen",
       },
       {

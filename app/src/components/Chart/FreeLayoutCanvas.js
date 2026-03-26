@@ -802,6 +802,21 @@ const FreeLayoutCanvas = ({
     [freeConnections, nodeMetaById]
   );
 
+  const getPosition = useCallback((node) => {
+    if (draftPositions[node.id]) {
+      return draftPositions[node.id];
+    }
+
+    if (node?.layout?.positionMode === "manual") {
+      return {
+        x: Number.isFinite(node.layout?.x) ? node.layout.x : autoPositions[node.id]?.x || 0,
+        y: Number.isFinite(node.layout?.y) ? node.layout.y : autoPositions[node.id]?.y || 0,
+      };
+    }
+
+    return autoPositions[node.id] || { x: 0, y: 0 };
+  }, [autoPositions, draftPositions]);
+
   const contentBounds = useMemo(() => {
     const positions = flattenedNodes.map(({ node }) => {
       const position = getPosition(node);
@@ -852,21 +867,6 @@ const FreeLayoutCanvas = ({
     },
     [canvasOffset, getPosition]
   );
-
-  const getPosition = useCallback((node) => {
-    if (draftPositions[node.id]) {
-      return draftPositions[node.id];
-    }
-
-    if (node?.layout?.positionMode === "manual") {
-      return {
-        x: Number.isFinite(node.layout?.x) ? node.layout.x : autoPositions[node.id]?.x || 0,
-        y: Number.isFinite(node.layout?.y) ? node.layout.y : autoPositions[node.id]?.y || 0,
-      };
-    }
-
-    return autoPositions[node.id] || { x: 0, y: 0 };
-  }, [autoPositions, draftPositions]);
 
   const getCanvasPointer = useCallback((clientX, clientY) => {
     const wrapper = wrapperRef.current;
