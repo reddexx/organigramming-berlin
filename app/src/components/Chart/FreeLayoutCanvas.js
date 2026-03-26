@@ -1197,6 +1197,12 @@ const FreeLayoutCanvas = ({
         type: "hierarchy",
         childNodeId: node.id,
         d: connectorPath.d,
+        parentSide: start.side,
+        childSide: end.side,
+        start,
+        end,
+        parentNodeId: parentId,
+        childNodeId: node.id,
         manual,
         pending: Boolean(isPendingConnector),
         actionX: connectorPath.midpoint.x,
@@ -1226,11 +1232,20 @@ const FreeLayoutCanvas = ({
         (connectorDragState.nodeId === connection.sourceNodeId ||
           connectorDragState.nodeId === connection.targetNodeId);
 
+      const start = getAnchorsFromRect(sourceRect)[connection.sourceAnchor];
+      const end = getAnchorsFromRect(targetRect)[connection.targetAnchor];
+
       return {
         id: `free:${connection.id}`,
         type: "free",
         connectionId: connection.id,
         d: connectorPath.d,
+        sourceSide: connection.sourceAnchor,
+        targetSide: connection.targetAnchor,
+        start,
+        end,
+        sourceNodeId: connection.sourceNodeId,
+        targetNodeId: connection.targetNodeId,
         manual: true,
         pending: Boolean(isPendingConnector),
         actionX: connectorPath.midpoint.x,
@@ -1345,6 +1360,58 @@ const FreeLayoutCanvas = ({
     });
   };
 
+  const handleConnectorMouseDown = (event, connector, role = "source") => {
+    if (!contentEditable || event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    onCloseContextMenu?.();
+    dragMovedRef.current = false;
+    suppressClickRef.current = false;
+
+    // Determine starting node and side depending on connector type and role
+    const canvasPointer = getCanvasPointer(event.clientX, event.clientY);
+
+    if (connector.type === "free") {
+      // choose closer end (start or end)
+      const distStart = Math.hypot(canvasPointer.x - connector.start.x, canvasPointer.y - connector.start.y);
+      const distEnd = Math.hypot(canvasPointer.x - connector.end.x, canvasPointer.y - connector.end.y);
+      const useStart = distStart <= distEnd;
+
+      setConnectorDragState({
+        nodeId: useStart ? connector.sourceNodeId : connector.targetNodeId,
+        side: useStart ? connector.sourceSide : connector.targetSide,
+        pointer: canvasPointer,
+        hoveredAnchor: null,
+        editingConnectionId: connector.connectionId,
+        editingRole: useStart ? "source" : "target",
+      });
+
+      return;
+    }
+
+    if (connector.type === "hierarchy") {
+      // pick closer end (parent or child)
+      const distStart = Math.hypot(canvasPointer.x - connector.start.x, canvasPointer.y - connector.start.y);
+      const distEnd = Math.hypot(canvasPointer.x - connector.end.x, canvasPointer.y - connector.end.y);
+      const useChild = distEnd <= distStart;
+
+      setConnectorDragState({
+        nodeId: useChild ? connector.childNodeId : connector.parentNodeId,
+        side: useChild ? connector.childSide : connector.parentSide,
+        pointer: canvasPointer,
+        hoveredAnchor: null,
+        editingConnectionId: connector.id,
+        editingRole: useChild ? "child" : "parent",
+      });
+
+      return;
+    }
+  };
+
   const handleNodeMouseDown = (event, node) => {
     if (!contentEditable || event.button !== 0) {
       return;
@@ -1424,6 +1491,7 @@ const FreeLayoutCanvas = ({
                 connector.pending ? " pending" : ""
               }`}
               d={connector.d}
+              onMouseDown={(e) => handleConnectorMouseDown(e, connector)}
             />
             <path
               className={`${connector.manual ? "manual" : "auto"}${
