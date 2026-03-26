@@ -334,6 +334,7 @@
         height: 100%;
         min-width: 100%;
         min-height: 100%;
+        pointer-events: none;
         z-index: 1;
 
         .free-layout-item {
@@ -341,6 +342,7 @@
           margin: 0;
           width: fit-content;
           height: fit-content;
+          pointer-events: none;
 
           &::before,
           > .oc-node::before,
@@ -355,6 +357,7 @@
             cursor: grab;
             touch-action: none;
             position: relative;
+            pointer-events: auto;
 
             &:hover {
               .free-layout-anchors {
