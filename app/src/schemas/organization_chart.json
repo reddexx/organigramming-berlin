@@ -79,7 +79,7 @@
           "title": "Layout Modus",
           "default": "tree",
           "enum": ["tree", "free"],
-          "enumNames": ["Baum", "Frei wie Draw.io"]
+          "enumNames": ["Baum", "Flexibel"]
         },
         "freeConnections": {
           "type": "array",
