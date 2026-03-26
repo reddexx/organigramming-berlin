@@ -520,7 +520,77 @@ const buildPathString = (points) => {
     .join(" ");
 };
 
-const createOrthogonalPath = (startAnchor, endAnchor, obstacles, canvasSize) => {
+const getPathMidpoint = (points) => {
+  const pathPoints = dedupePoints(points);
+
+  if (!pathPoints.length) {
+    return { x: 0, y: 0 };
+  }
+
+  if (pathPoints.length === 1) {
+    return pathPoints[0];
+  }
+
+  const segments = [];
+  let totalLength = 0;
+
+  for (let index = 1; index < pathPoints.length; index += 1) {
+    const startPoint = pathPoints[index - 1];
+    const endPoint = pathPoints[index];
+    const length = Math.abs(endPoint.x - startPoint.x) + Math.abs(endPoint.y - startPoint.y);
+
+    if (!length) {
+      continue;
+    }
+
+    segments.push({ startPoint, endPoint, length });
+    totalLength += length;
+  }
+
+  if (!segments.length) {
+    return pathPoints[0];
+  }
+
+  const midpointDistance = totalLength / 2;
+  let traversedLength = 0;
+
+  for (const segment of segments) {
+    if (traversedLength + segment.length >= midpointDistance) {
+      const offset = midpointDistance - traversedLength;
+
+      if (segment.startPoint.x === segment.endPoint.x) {
+        const direction = segment.endPoint.y >= segment.startPoint.y ? 1 : -1;
+
+        return {
+          x: segment.startPoint.x,
+          y: Math.round(segment.startPoint.y + offset * direction),
+        };
+      }
+
+      const direction = segment.endPoint.x >= segment.startPoint.x ? 1 : -1;
+
+      return {
+        x: Math.round(segment.startPoint.x + offset * direction),
+        y: segment.startPoint.y,
+      };
+    }
+
+    traversedLength += segment.length;
+  }
+
+  return pathPoints[pathPoints.length - 1];
+};
+
+const buildOrthogonalConnector = (startAnchor, endAnchor, obstacles, canvasSize) => {
+  const points = createOrthogonalPathPoints(startAnchor, endAnchor, obstacles, canvasSize);
+
+  return {
+    d: buildPathString(points),
+    midpoint: getPathMidpoint(points),
+  };
+};
+
+const createOrthogonalPathPoints = (startAnchor, endAnchor, obstacles, canvasSize) => {
   const startLead = {
     x: startAnchor.x + startAnchor.dx * ANCHOR_OFFSET,
     y: startAnchor.y + startAnchor.dy * ANCHOR_OFFSET,
@@ -643,13 +713,13 @@ const createOrthogonalPath = (startAnchor, endAnchor, obstacles, canvasSize) => 
   );
 
   if (clearCandidate) {
-    return buildPathString(clearCandidate);
+    return dedupePoints(clearCandidate);
   }
 
   points.push(endLead);
   points.push({ x: endAnchor.x, y: endAnchor.y });
 
-  return buildPathString(points);
+  return dedupePoints(points);
 };
 
 const buildAutoPositions = (nodes) => {
@@ -1048,6 +1118,7 @@ const FreeLayoutCanvas = ({
       const obstacles = Object.entries(nodeRects)
         .filter(([id]) => id !== node.id && id !== parentId)
         .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
+      const connectorPath = buildOrthogonalConnector(start, end, obstacles, canvasSize);
       const isPendingConnector =
         connectorDragState &&
         (connectorDragState.nodeId === node.id || connectorDragState.nodeId === parentId);
@@ -1056,11 +1127,11 @@ const FreeLayoutCanvas = ({
         id: `hierarchy:${parentId}-${node.id}`,
         type: "hierarchy",
         childNodeId: node.id,
-        d: createOrthogonalPath(start, end, obstacles, canvasSize),
+        d: connectorPath.d,
         manual,
         pending: Boolean(isPendingConnector),
-        actionX: Math.round((start.x + end.x) / 2),
-        actionY: Math.round((start.y + end.y) / 2),
+        actionX: connectorPath.midpoint.x,
+        actionY: connectorPath.midpoint.y,
       };
     })
     .filter(Boolean);
@@ -1080,6 +1151,7 @@ const FreeLayoutCanvas = ({
           ([id]) => id !== connection.sourceNodeId && id !== connection.targetNodeId
         )
         .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
+      const connectorPath = buildOrthogonalConnector(start, end, obstacles, canvasSize);
       const isPendingConnector =
         connectorDragState &&
         (connectorDragState.nodeId === connection.sourceNodeId ||
@@ -1089,11 +1161,11 @@ const FreeLayoutCanvas = ({
         id: `free:${connection.id}`,
         type: "free",
         connectionId: connection.id,
-        d: createOrthogonalPath(start, end, obstacles, canvasSize),
+        d: connectorPath.d,
         manual: true,
         pending: Boolean(isPendingConnector),
-        actionX: Math.round((start.x + end.x) / 2),
-        actionY: Math.round((start.y + end.y) / 2),
+        actionX: connectorPath.midpoint.x,
+        actionY: connectorPath.midpoint.y,
       };
     })
     .filter(Boolean);
@@ -1139,7 +1211,7 @@ const FreeLayoutCanvas = ({
       .filter(([id]) => id !== connectorDragState.nodeId && id !== targetNodeId)
       .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
 
-    return createOrthogonalPath(sourceAnchor, targetAnchor, obstacles, canvasSize);
+    return buildOrthogonalConnector(sourceAnchor, targetAnchor, obstacles, canvasSize).d;
   }, [canvasSize, connectorDragState, nodeRects]);
 
   const handleCanvasMouseDown = (event) => {
