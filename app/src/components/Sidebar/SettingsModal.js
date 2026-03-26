@@ -40,15 +40,16 @@ const SettingsModal = (props) => {
   const definitions = getDefinitions(formData);
 
   useEffect(() => {
-    const warningMessages = getErrorMsg(props.data);
+    const nextFormData = { ...props.data };
+    const warningMessages = getErrorMsg(nextFormData);
     setWarningMessages(warningMessages);
+    setFormData(nextFormData);
 
-    if (!hasMounted.current) {
-      // This block will only run once
-      setInitialFormData({ ...props.data });
+    if (props.show || !hasMounted.current) {
+      setInitialFormData(nextFormData);
       hasMounted.current = true;
     }
-  }, [props.data]); // Adding props.data to satisfy the linter
+  }, [props.data, props.show]);
 
   const schema = { ...definitions, ...properties };
 
@@ -91,12 +92,12 @@ const SettingsModal = (props) => {
     },
   };
 
-  const onBlur = () => {
+  const persistSettings = (nextFormData = formData) => {
     props.sendDataUp({
-      ...formData,
+      ...nextFormData,
       settings: {
-        ...(formData.settings || {}),
-        customFonts: sanitizeCustomFonts(formData?.settings?.customFonts),
+        ...(nextFormData.settings || {}),
+        customFonts: sanitizeCustomFonts(nextFormData?.settings?.customFonts),
       },
     });
   };
@@ -131,6 +132,7 @@ const SettingsModal = (props) => {
   };
 
   const resetSetting = () => {
+    setFormData(initialFormData);
     props.sendDataUp(initialFormData);
   };
 
@@ -151,7 +153,6 @@ const SettingsModal = (props) => {
               ObjectFieldTemplate={ObjectFieldTemplate}
               ArrayFieldTemplate={ArrayFieldTemplate}
               onChange={onChange}
-              onBlur={onBlur}
               liveValidate
               showErrorList={false}
             >
@@ -188,6 +189,7 @@ const SettingsModal = (props) => {
         </Button>
         <Button
           onClick={() => {
+            persistSettings();
             props.onHide();
           }}
         >

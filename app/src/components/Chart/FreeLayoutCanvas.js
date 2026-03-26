@@ -37,6 +37,8 @@ const GRID_SIZE = 24;
 const ALIGNMENT_THRESHOLD = 8;
 const ANCHOR_FOCUS_DISTANCE = 40;
 
+const getEstimatedNodeHeight = (nodeRects, nodeId) => nodeRects[nodeId]?.height || 160;
+
 const flattenNodes = (nodes, parentId = null, level = 1, result = []) => {
   (nodes || []).forEach((node) => {
     result.push({ node, parentId, level });
@@ -800,6 +802,57 @@ const FreeLayoutCanvas = ({
     [freeConnections, nodeMetaById]
   );
 
+  const contentBounds = useMemo(() => {
+    const positions = flattenedNodes.map(({ node }) => {
+      const position = getPosition(node);
+      const width = getNodeWidth(node);
+      const height = getEstimatedNodeHeight(nodeRects, node.id);
+
+      return {
+        left: position.x,
+        top: position.y,
+        right: position.x + width,
+        bottom: position.y + height,
+      };
+    });
+
+    if (!positions.length) {
+      return {
+        minX: 0,
+        minY: 0,
+        maxX: 1400 - CANVAS_PADDING * 2,
+        maxY: 900 - CANVAS_PADDING * 2,
+      };
+    }
+
+    return {
+      minX: Math.min(...positions.map((position) => position.left)),
+      minY: Math.min(...positions.map((position) => position.top)),
+      maxX: Math.max(...positions.map((position) => position.right)),
+      maxY: Math.max(...positions.map((position) => position.bottom)),
+    };
+  }, [flattenedNodes, getPosition, nodeRects]);
+
+  const canvasOffset = useMemo(
+    () => ({
+      x: CANVAS_PADDING - contentBounds.minX,
+      y: CANVAS_PADDING - contentBounds.minY,
+    }),
+    [contentBounds]
+  );
+
+  const getDisplayPosition = useCallback(
+    (node) => {
+      const position = getPosition(node);
+
+      return {
+        x: position.x + canvasOffset.x,
+        y: position.y + canvasOffset.y,
+      };
+    },
+    [canvasOffset, getPosition]
+  );
+
   const getPosition = useCallback((node) => {
     if (draftPositions[node.id]) {
       return draftPositions[node.id];
@@ -864,7 +917,7 @@ const FreeLayoutCanvas = ({
         }
 
         const measuredElement = element.querySelector(".oc-container") || element;
-        const position = getPosition(node);
+        const position = getDisplayPosition(node);
         nextRects[node.id] = {
           left: position.x + measuredElement.offsetLeft,
           top: position.y + measuredElement.offsetTop,
@@ -883,7 +936,7 @@ const FreeLayoutCanvas = ({
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", measureNodes);
     };
-  }, [flattenedNodes, draftPositions, autoPositions, getPosition]);
+  }, [flattenedNodes, draftPositions, autoPositions, getDisplayPosition]);
 
   useEffect(() => {
     if (!dragState) {
@@ -896,18 +949,21 @@ const FreeLayoutCanvas = ({
       event.preventDefault();
 
       const rawX = Math.max(
-        0,
         Math.round(dragState.startPosition.x + event.clientX - dragState.startX)
       );
-      const rawY = Math.max(
-        0,
-        Math.round(dragState.startPosition.y + event.clientY - dragState.startY)
-      );
-      const { position: snappedPosition, guides } = getDragSnapResult(
+      const rawY = Math.round(dragState.startPosition.y + event.clientY - dragState.startY);
+      const { position: snappedDisplayPosition, guides } = getDragSnapResult(
         dragState.node.id,
-        { x: rawX, y: rawY },
+        {
+          x: rawX + canvasOffset.x,
+          y: rawY + canvasOffset.y,
+        },
         nodeRects
       );
+      const snappedPosition = {
+        x: snappedDisplayPosition.x - canvasOffset.x,
+        y: snappedDisplayPosition.y - canvasOffset.y,
+      };
 
       if (
         Math.abs(event.clientX - dragState.startX) > 2 ||
@@ -966,7 +1022,7 @@ const FreeLayoutCanvas = ({
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("blur", handleWindowBlur);
     };
-  }, [dragState, draftPositions, nodeRects, onUpdateNodeLayout]);
+  }, [canvasOffset, dragState, draftPositions, nodeRects, onUpdateNodeLayout]);
 
   useEffect(() => {
     if (!connectorDragState) {
@@ -1082,27 +1138,11 @@ const FreeLayoutCanvas = ({
   ]);
 
   const canvasSize = useMemo(() => {
-    const measuredWidths = Object.values(nodeRects).map(
-      (rect) => rect.left + rect.width + CANVAS_PADDING
-    );
-    const measuredHeights = Object.values(nodeRects).map(
-      (rect) => rect.top + rect.height + CANVAS_PADDING
-    );
-    const positionedWidths = flattenedNodes.map(({ node }) => {
-      const position = getPosition(node);
-      return position.x + getNodeWidth(node) + CANVAS_PADDING;
-    });
-    const positionedHeights = flattenedNodes.map(({ node }) => {
-      const position = getPosition(node);
-      const estimatedHeight = nodeRects[node.id]?.height || 160;
-      return position.y + estimatedHeight + CANVAS_PADDING;
-    });
-
     return {
-      width: Math.max(1400, ...measuredWidths, ...positionedWidths),
-      height: Math.max(900, ...measuredHeights, ...positionedHeights),
+      width: Math.max(1400, contentBounds.maxX - contentBounds.minX + CANVAS_PADDING * 2),
+      height: Math.max(900, contentBounds.maxY - contentBounds.minY + CANVAS_PADDING * 2),
     };
-  }, [flattenedNodes, nodeRects, getPosition]);
+  }, [contentBounds]);
 
   const hierarchyConnectors = flattenedNodes
     .filter(({ node, parentId }) => parentId && node?.layout?.connectorHidden !== true)
@@ -1392,7 +1432,7 @@ const FreeLayoutCanvas = ({
       <ul className="free-layout-list">
         {flattenedNodes.map((nodeMeta) => {
           const { node, level } = nodeMeta;
-          const position = getPosition(node);
+          const position = getDisplayPosition(node);
           const isDragging = dragState?.node?.id === node.id;
           const isPendingNode = connectorDragState?.nodeId === node.id;
           const isHoveredTarget = connectorDragState?.hoveredAnchor?.nodeId === node.id;

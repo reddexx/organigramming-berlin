@@ -120,23 +120,70 @@
       }
     }
 
-    .paper-size-label {
-      cursor: pointer;
-      position: absolute;
-      bottom: 100%;
-      left: 0.5rem;
-      padding: 0.1rem 1rem;
-      font-size: $font-size-sm * 0.875;
-      border-top-right-radius: 0.2rem;
-      border-top-left-radius: 0.2rem;
-      background-color: $gray-400;
-      color: $gray-600;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-      &:hover {
-        background-color: $gray-500;
+    &.free-layout-paper {
+      width: fit-content;
+      height: fit-content;
+      min-width: 297mm;
+      min-height: 210mm;
+
+      &.A0 {
+        min-width: 1189mm;
+        min-height: 841mm;
+
+        &.portrait {
+          min-width: 841mm;
+          min-height: 1189mm;
+        }
+      }
+
+      &.A1 {
+        min-width: 841mm;
+        min-height: 594mm;
+
+        &.portrait {
+          min-width: 594mm;
+          min-height: 841mm;
+        }
+      }
+
+      &.A2 {
+        min-width: 594mm;
+        min-height: 420mm;
+
+        &.portrait {
+          min-width: 420mm;
+          min-height: 594mm;
+        }
+      }
+
+      &.A3 {
+        min-width: 420mm;
+        min-height: 297mm;
+
+        &.portrait {
+          min-width: 297mm;
+          min-height: 420mm;
+        }
+      }
+
+      &.A4 {
+        min-width: 297mm;
+        min-height: 210mm;
+
+        &.portrait {
+          min-width: 210mm;
+          min-height: 297mm;
+        }
+      }
+
+      &.A5 {
+        min-width: 210mm;
+        min-height: 148mm;
+
+        &.portrait {
+          min-width: 148mm;
+          min-height: 210mm;
+        }
       }
     }
 
@@ -243,8 +290,8 @@
 
       .free-layout-canvas {
         position: relative;
-        min-width: calc(100% - 2rem);
-        min-height: calc(100% - 2rem);
+        min-width: 100%;
+        min-height: 100%;
       }
 
       .free-layout-connectors {
@@ -587,8 +634,7 @@ body.free-layout-connecting {
   .navbar,
   .control-layer,
   .react-joyride,
-  .navigation-container,
-  .paper-size-label {
+  .navigation-container {
     display: none;
   }
   .view-container {
