@@ -65,10 +65,10 @@ const Sidebar = forwardRef(
 
     useEffect(() => {
       // if dataURL exists, do not show intro modal
-      // check to show info modal
-      setInfoModalShow(data === initDocument && !dataURL);
+      // check to show info modal; do not auto-show in viewer mode
+      setInfoModalShow(data === initDocument && !dataURL && mode !== "viewer");
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [dataURL]);
+    }, [dataURL, mode]);
 
     useEffect(() => {
       setNewDocumentModalShow(false);
@@ -130,6 +130,7 @@ const Sidebar = forwardRef(
         {infoModalShow && (
           <InfoModal
             show={infoModalShow}
+            footerOnly={mode === "viewer"}
             onJoyrideStart={() => onJoyrideStart()}
             onHide={() => setInfoModalShow(false)}
           />
