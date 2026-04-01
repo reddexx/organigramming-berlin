@@ -36,6 +36,12 @@ const CONNECTOR_EDGE_OVERLAP = 4;
 const GRID_SIZE = 24;
 const ALIGNMENT_THRESHOLD = 8;
 const ANCHOR_FOCUS_DISTANCE = 40;
+const MIN_NODE_WIDTH = 160;
+const MAX_NODE_WIDTH = 480;
+const MIN_NODE_HEIGHT = 0;
+const MAX_NODE_HEIGHT = 640;
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const getEstimatedNodeHeight = (nodeRects, nodeId) => nodeRects[nodeId]?.height || 160;
 
@@ -805,7 +811,9 @@ const FreeLayoutCanvas = ({
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [nodeRects, setNodeRects] = useState({});
   const [draftPositions, setDraftPositions] = useState({});
+  const [draftNodeLayouts, setDraftNodeLayouts] = useState({});
   const [dragState, setDragState] = useState(null);
+  const [resizeState, setResizeState] = useState(null);
   const [connectorDragState, setConnectorDragState] = useState(null);
   const [dragGuides, setDragGuides] = useState([]);
   const [hoveredConnectorId, setHoveredConnectorId] = useState(null);
@@ -823,6 +831,11 @@ const FreeLayoutCanvas = ({
   const validFreeConnections = useMemo(
     () => (freeConnections || []).filter((connection) => isValidFreeConnection(connection, nodeMetaById)),
     [freeConnections, nodeMetaById]
+  );
+
+  const getDraftLayout = useCallback(
+    (nodeId) => draftNodeLayouts[nodeId] || null,
+    [draftNodeLayouts]
   );
 
   const getPosition = useCallback((node) => {
@@ -970,7 +983,7 @@ const FreeLayoutCanvas = ({
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", measureNodes);
     };
-  }, [flattenedNodes, draftPositions, autoPositions, getDisplayPosition]);
+  }, [flattenedNodes, draftPositions, draftNodeLayouts, autoPositions, getDisplayPosition]);
 
   useEffect(() => {
     if (!dragState) {
@@ -1057,6 +1070,84 @@ const FreeLayoutCanvas = ({
       window.removeEventListener("blur", handleWindowBlur);
     };
   }, [canvasOffset, dragState, draftPositions, nodeRects, onUpdateNodeLayout]);
+
+  useEffect(() => {
+    if (!resizeState) {
+      return undefined;
+    }
+
+    document.body.classList.add("free-layout-resizing");
+
+    const handleMouseMove = (event) => {
+      event.preventDefault();
+
+      const deltaX = event.clientX - resizeState.startX;
+      const deltaY = event.clientY - resizeState.startY;
+      const nextWidth = clamp(
+        resizeState.startWidth +
+          (resizeState.handle === "right" || resizeState.handle === "corner" ? deltaX : 0),
+        MIN_NODE_WIDTH,
+        MAX_NODE_WIDTH
+      );
+      const nextHeight = clamp(
+        resizeState.startHeight +
+          (resizeState.handle === "bottom" || resizeState.handle === "corner" ? deltaY : 0),
+        MIN_NODE_HEIGHT,
+        MAX_NODE_HEIGHT
+      );
+
+      dragMovedRef.current = true;
+      setDraftNodeLayouts((current) => ({
+        ...current,
+        [resizeState.node.id]: {
+          ...(current[resizeState.node.id] || {}),
+          nodeWidth: nextWidth,
+          nodeMinHeight: nextHeight,
+        },
+      }));
+    };
+
+    const handleMouseUp = async () => {
+      const nextLayout = draftNodeLayouts[resizeState.node.id];
+      setResizeState(null);
+
+      if (nextLayout) {
+        suppressClickRef.current = true;
+        await onUpdateNodeLayout(resizeState.node.id, {
+          nodeWidth: nextLayout.nodeWidth,
+          nodeMinHeight: nextLayout.nodeMinHeight,
+        });
+      }
+
+      dragMovedRef.current = false;
+      setDraftNodeLayouts((current) => {
+        const nextDrafts = { ...current };
+        delete nextDrafts[resizeState.node.id];
+        return nextDrafts;
+      });
+    };
+
+    const handleWindowBlur = () => {
+      setResizeState(null);
+      dragMovedRef.current = false;
+      setDraftNodeLayouts((current) => {
+        const nextDrafts = { ...current };
+        delete nextDrafts[resizeState.node.id];
+        return nextDrafts;
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.body.classList.remove("free-layout-resizing");
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, [draftNodeLayouts, onUpdateNodeLayout, resizeState]);
 
   useEffect(() => {
     if (!connectorDragState) {
@@ -1310,7 +1401,7 @@ const FreeLayoutCanvas = ({
   }, [canvasSize, connectorDragState, nodeRects]);
 
   const handleCanvasMouseDown = (event) => {
-    if (event.target.closest(".oc-node, .free-layout-anchor")) {
+    if (event.target.closest(".oc-node, .free-layout-anchor, .free-layout-resize-handle")) {
       return;
     }
 
@@ -1419,7 +1510,7 @@ const FreeLayoutCanvas = ({
       return;
     }
 
-    if (event.target.closest("button, input, textarea, select, a")) {
+    if (event.target.closest("button, input, textarea, select, a, .free-layout-resize-handle")) {
       return;
     }
 
@@ -1434,6 +1525,35 @@ const FreeLayoutCanvas = ({
       startX: event.clientX,
       startY: event.clientY,
       startPosition: getPosition(node),
+    });
+  };
+
+  const handleResizeMouseDown = (event, node, handle) => {
+    if (!contentEditable || event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const measuredRect = nodeRects[node.id];
+    const startWidth = node?.layout?.nodeWidth || measuredRect?.width || 224;
+    const startHeight =
+      node?.layout?.nodeMinHeight && node.layout.nodeMinHeight > 0
+        ? node.layout.nodeMinHeight
+        : measuredRect?.height || 160;
+
+    onCloseContextMenu?.();
+    setConnectorDragState(null);
+    setDragState(null);
+    dragMovedRef.current = false;
+    setResizeState({
+      node,
+      handle,
+      startX: event.clientX,
+      startY: event.clientY,
+      startWidth,
+      startHeight,
     });
   };
 
@@ -1541,7 +1661,18 @@ const FreeLayoutCanvas = ({
         {flattenedNodes.map((nodeMeta) => {
           const { node, level } = nodeMeta;
           const position = getDisplayPosition(node);
+          const draftLayout = getDraftLayout(node.id);
+          const renderedNode = draftLayout
+            ? {
+                ...node,
+                layout: {
+                  ...(node.layout || {}),
+                  ...draftLayout,
+                },
+              }
+            : node;
           const isDragging = dragState?.node?.id === node.id;
+          const isResizing = resizeState?.node?.id === node.id;
           const isPendingNode = connectorDragState?.nodeId === node.id;
           const isHoveredTarget = connectorDragState?.hoveredAnchor?.nodeId === node.id;
           const isConnectableNode = Boolean(
@@ -1551,6 +1682,7 @@ const FreeLayoutCanvas = ({
             contentEditable &&
             (selectedNodeId === node.id ||
               isDragging ||
+              isResizing ||
               isPendingNode ||
               isConnectableNode ||
               isHoveredTarget);
@@ -1583,6 +1715,7 @@ const FreeLayoutCanvas = ({
                   (isHoveredTarget ? " hovered-connection" : "") +
                   (node.layout?.style ? ` ${node.layout.style}` : "") +
                   (isDragging ? " position-dragging" : "") +
+                  (isResizing ? " position-dragging" : "") +
                   (node.organisations && node.organisations.length > 0
                     ? node.organisations.length > 1
                       ? " has-children"
@@ -1627,7 +1760,67 @@ const FreeLayoutCanvas = ({
                     })}
                   </div>
                 )}
-                <ChartNodeCard data={node} />
+                {contentEditable && (selectedNodeId === node.id || isResizing) && (
+                  <>
+                    <button
+                      type="button"
+                      className="free-layout-resize-handle right"
+                      style={{
+                        position: "absolute",
+                        top: "12px",
+                        right: "-6px",
+                        width: "12px",
+                        height: "calc(100% - 24px)",
+                        cursor: "col-resize",
+                        background: "transparent",
+                        border: 0,
+                        zIndex: 6,
+                      }}
+                      onMouseDown={(event) => handleResizeMouseDown(event, node, "right")}
+                      aria-label={`${node.name || node.id}: Breite anpassen`}
+                      title="Breite anpassen"
+                    />
+                    <button
+                      type="button"
+                      className="free-layout-resize-handle bottom"
+                      style={{
+                        position: "absolute",
+                        left: "12px",
+                        bottom: "-6px",
+                        width: "calc(100% - 24px)",
+                        height: "12px",
+                        cursor: "row-resize",
+                        background: "transparent",
+                        border: 0,
+                        zIndex: 6,
+                      }}
+                      onMouseDown={(event) => handleResizeMouseDown(event, node, "bottom")}
+                      aria-label={`${node.name || node.id}: Höhe anpassen`}
+                      title="Höhe anpassen"
+                    />
+                    <button
+                      type="button"
+                      className="free-layout-resize-handle corner"
+                      style={{
+                        position: "absolute",
+                        right: "-6px",
+                        bottom: "-6px",
+                        width: "14px",
+                        height: "14px",
+                        cursor: "nwse-resize",
+                        background: "#132458",
+                        border: "2px solid #ffffff",
+                        borderRadius: "50%",
+                        zIndex: 7,
+                        boxShadow: "0 0 0 1px rgba(19, 36, 88, 0.2)",
+                      }}
+                      onMouseDown={(event) => handleResizeMouseDown(event, node, "corner")}
+                      aria-label={`${node.name || node.id}: Größe anpassen`}
+                      title="Größe anpassen"
+                    />
+                  </>
+                )}
+                <ChartNodeCard data={renderedNode} />
               </div>
             </li>
           );

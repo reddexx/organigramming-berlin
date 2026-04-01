@@ -1,10 +1,19 @@
-import React from "react";
-import { utils } from "@rjsf/core";
+import React, { useMemo } from "react";
 
-const { getDefaultRegistry } = utils;
-const { fields } = getDefaultRegistry();
+const normalizeOptions = (options = []) => {
+  return [...new Set(options.filter((option) => typeof option === "string" && option.trim()))];
+};
 
 const CustomDropdown = (props) => {
+  const { idSchema, formData, onChange, schema = {}, placeholder, disabled, readonly } = props;
+  const inputId = idSchema?.$id;
+  const dataListId = inputId ? `${inputId}__options` : undefined;
+  const options = useMemo(() => {
+    const schemaEnum = Array.isArray(schema.enum) ? schema.enum : [];
+    const schemaExamples = Array.isArray(schema.examples) ? schema.examples : [];
+    return normalizeOptions([...schemaEnum, ...schemaExamples]);
+  }, [schema.enum, schema.examples]);
+
   return (
     <div>
       <span className="customDropdown">
@@ -22,7 +31,24 @@ const CustomDropdown = (props) => {
           />
         </svg>
       </span>
-      <fields.StringField {...props} />
+      <input
+        id={inputId}
+        type="text"
+        className="form-control"
+        value={formData || ""}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        list={options.length > 0 ? dataListId : undefined}
+        disabled={disabled || readonly}
+        autoComplete="off"
+      />
+      {options.length > 0 && (
+        <datalist id={dataListId}>
+          {options.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      )}
     </div>
   );
 };

@@ -482,48 +482,50 @@ const Sidebar = forwardRef(
                 </Button>
               )}
               {/* pass sharedCharts to OrganisationTab via props earlier */}
-              <ButtonGroup className="undo-redo-group">
-                <Button
-                  onClick={onUndo}
-                  disabled={!enableUndo}
-                  title="Änderung rückgängig machen"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    className="bi me-1 bi-undo"
-                    viewBox="0 0 16 16"
+              {mode !== "viewer" && (
+                <ButtonGroup className="undo-redo-group">
+                  <Button
+                    onClick={onUndo}
+                    disabled={!enableUndo}
+                    title="Änderung rückgängig machen"
                   >
-                    <path
-                      d="M8.7,11.5c-1.4,0.2-2.9-0.2-4.1-1l-1.1,1.1c0,0-0.1,0.1-0.2,0.1c-0.1,0-0.3-0.1-0.3-0.2l-0.4-3V8.4c0-0.1,0.1-0.2,0.3-0.2
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      fill="currentColor"
+                      className="bi me-1 bi-undo"
+                      viewBox="0 0 16 16"
+                    >
+                      <path
+                        d="M8.7,11.5c-1.4,0.2-2.9-0.2-4.1-1l-1.1,1.1c0,0-0.1,0.1-0.2,0.1c-0.1,0-0.3-0.1-0.3-0.2l-0.4-3V8.4c0-0.1,0.1-0.2,0.3-0.2
         l3.1,0.2c0.1,0,0.1,0,0.2,0.1c0.1,0.1,0.1,0.3,0,0.4l-0.9,1c2.3,1.5,5.4,0.8,6.9-1.6c0.6-1,0.9-2.1,0.7-3.2c0-0.3,0.1-0.5,0.4-0.6
         c0.3,0,0.5,0.1,0.6,0.4c0,0,0,0,0,0C14.3,8.1,12,11.1,8.7,11.5z"
-                    />
-                  </svg>
-                </Button>
-                <Button
-                  onClick={onRedo}
-                  disabled={!enableRedo}
-                  title="Änderung wiederherstellen"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    className="bi me-1 bi-redo"
-                    viewBox="0 0 16 16"
+                      />
+                    </svg>
+                  </Button>
+                  <Button
+                    onClick={onRedo}
+                    disabled={!enableRedo}
+                    title="Änderung wiederherstellen"
                   >
-                    <path
-                      d="M13.2,7.6c0,0.1-0.1,0.3-0.2,0.3h0L9.9,7.7c-0.1,0-0.2-0.1-0.2-0.3c0-0.1,0-0.1,0.1-0.2l0.9-1
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      fill="currentColor"
+                      className="bi me-1 bi-redo"
+                      viewBox="0 0 16 16"
+                    >
+                      <path
+                        d="M13.2,7.6c0,0.1-0.1,0.3-0.2,0.3h0L9.9,7.7c-0.1,0-0.2-0.1-0.2-0.3c0-0.1,0-0.1,0.1-0.2l0.9-1
 		C8.6,5,6,5.3,4.4,7c-1.1,1.1-1.5,2.6-1.3,4c0,0.3-0.1,0.5-0.4,0.6c-0.3,0-0.5-0.1-0.6-0.4c0,0,0,0,0,0C1.7,7.9,4,4.9,7.3,4.5
 		c1.4-0.2,2.9,0.2,4.1,1l1.1-1.1c0.1-0.1,0.2-0.1,0.4,0c0,0,0.1,0.1,0.1,0.1L13.2,7.6z"
-                    />
-                  </svg>
-                </Button>
-              </ButtonGroup>
+                      />
+                    </svg>
+                  </Button>
+                </ButtonGroup>
+              )}
             </Nav>
           </Navbar>
         </Row>

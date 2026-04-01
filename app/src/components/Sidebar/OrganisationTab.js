@@ -103,7 +103,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
             "ui:field": CustomDropdown,
           },
           positionStatus: {
-            "ui:placeholder": "z.B. kommisarisch",
+            "ui:placeholder": "z.B. kommissarisch",
             "ui:field": CustomDropdown,
           },
           person: {
@@ -232,7 +232,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
             "ui:field": CustomDropdown,
           },
           type: {
-            "ui:placeholder": "z.B. Büro",
+            "ui:placeholder": "z.B. Unternehmensbereich",
             "ui:field": CustomDropdown,
           },
           uri: {
@@ -247,11 +247,11 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
                 field: "ObjectField",
               },
               positionType: {
-                "ui:placeholder": "z.B. Referent:in",
+                "ui:placeholder": "z.B. Geschäftsführung",
                 "ui:field": CustomDropdown,
               },
               positionStatus: {
-                "ui:placeholder": "z.B. kommisarisch",
+                "ui:placeholder": "z.B. kommissarisch",
                 "ui:field": CustomDropdown,
               },
               uri: {
