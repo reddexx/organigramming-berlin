@@ -1219,7 +1219,13 @@ const FreeLayoutCanvas = ({
         return null;
       }
 
-      
+      const start = getAnchorsFromRect(sourceRect)[connection.sourceAnchor];
+      const end = getAnchorsFromRect(targetRect)[connection.targetAnchor];
+
+      if (!start || !end) {
+        return null;
+      }
+
       const obstacles = Object.entries(nodeRects)
         .filter(
           ([id]) => id !== connection.sourceNodeId && id !== connection.targetNodeId
@@ -1230,9 +1236,6 @@ const FreeLayoutCanvas = ({
         connectorDragState &&
         (connectorDragState.nodeId === connection.sourceNodeId ||
           connectorDragState.nodeId === connection.targetNodeId);
-
-      const start = getAnchorsFromRect(sourceRect)[connection.sourceAnchor];
-      const end = getAnchorsFromRect(targetRect)[connection.targetAnchor];
 
       return {
         id: `free:${connection.id}`,

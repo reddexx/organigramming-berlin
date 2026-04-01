@@ -2,6 +2,7 @@
   "title": "Organization chart",
   "description": "Organization chart for Berlin's administration",
   "version": "0.0.1",
+  "type": "object",
   "definitions": {
     "additionalProperties": false,
     "document": {

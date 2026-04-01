@@ -324,10 +324,23 @@ const ChartContainer = forwardRef(
     };
 
     const resetViewHandler = () => {
+      if (!chart.current) {
+        return;
+      }
+
+      const paperElement = chart.current.querySelector("#paper");
+      if (!paperElement) {
+        return;
+      }
+
       const containerWidth = chart.current.clientWidth,
         containerHeight = chart.current.clientHeight,
-        chartWidth = chart.current.querySelector("#paper").clientWidth,
-        chartHeight = chart.current.querySelector("#paper").clientHeight;
+        chartWidth = paperElement.clientWidth,
+        chartHeight = paperElement.clientHeight;
+
+      if (!containerWidth || !containerHeight || !chartWidth || !chartHeight) {
+        return;
+      }
 
       let newScale = Math.min(
         (containerWidth - 32) / chartWidth,
@@ -365,16 +378,30 @@ const ChartContainer = forwardRef(
     const updateChartHandler = () => {
       const rootNode = chart.current.querySelector("#n-root");
       let rootNodeHeight = 57;
-      if (rootNodeHeight) {
+      if (!chart.current) {
+        return;
+      }
+
+      if (rootNode) {
         rootNodeHeight = rootNode.clientHeight;
       }
 
-      const paperWidth =
-          chart.current.querySelector(".chart-container").clientWidth,
-        paperHeight =
-          chart.current.querySelector(".chart-container").clientHeight,
-        chartWidth = chart.current.querySelector(".chart").clientWidth,
-        chartHeight = chart.current.querySelector(".chart").clientHeight;
+      const chartContainerElement = chart.current.querySelector(".chart-container");
+      const chartElement = chart.current.querySelector(".chart");
+
+      if (!chartContainerElement || !chartElement) {
+        return;
+      }
+
+      const paperWidth = chartContainerElement.clientWidth,
+        paperHeight = chartContainerElement.clientHeight,
+        chartWidth = chartElement.clientWidth,
+        chartHeight = chartElement.clientHeight;
+
+      if (!paperWidth || !paperHeight || !chartWidth || !chartHeight) {
+        return;
+      }
+
       let newScale = Math.min(
         paperWidth / chartWidth,
         paperHeight / (chartHeight - rootNodeHeight)
