@@ -10,6 +10,7 @@ import OrganizationChart from "./ChartContainer";
 import JSONDigger from "../../services/jsonDigger";
 import { v4 as uuidv4 } from "uuid";
 import getURI from "../../services/getURI";
+import { isValidHttpUrl } from "../../services/service";
 
 const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin", onOpenLinkedChart }, ref) => {
   const orgchart = useRef();
@@ -213,6 +214,8 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
           } else {
             if (nodeData && nodeData.linkedChartId && typeof onOpenLinkedChart === 'function') {
               onOpenLinkedChart(nodeData.linkedChartId);
+            } else if (isValidHttpUrl(nodeData?.uri?.uri)) {
+              window.open(nodeData.uri.uri.trim(), "_blank", "noopener,noreferrer");
             }
           }
         }}

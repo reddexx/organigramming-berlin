@@ -19,6 +19,20 @@ export const getFileNameFromURL = (url) => {
   const urlSplitted = url.split("/");
   return urlSplitted[urlSplitted.length - 1];
 };
+
+export const isValidHttpUrl = (value) => {
+  if (typeof value !== "string" || !value.trim()) {
+    return false;
+  }
+
+  try {
+    const parsedUrl = new URL(value.trim());
+    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
+  } catch (error) {
+    return false;
+  }
+};
+
 export const dragNodeService = {
   sendDragInfo: (id) => subject1.next({ draggedNodeId: id }),
   clearDragInfo: () => subject1.next(),

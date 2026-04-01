@@ -10,7 +10,6 @@ import ArrayFieldTemplate from "../From/ArrayFieldTemplate";
 import ObjectFieldTemplate from "../From/ObjectFieldTemplate";
 import CollapsibleField from "../From/CollapsibleField";
 import UriSearch from "../From/UriSearch";
-import MainOrganisation from "../From/MainOrganisation";
 import ColorPickerWidget from "../From/ColorPickerWidget";
 
 import CustomDropdown from "../From/CustomDropdown";
@@ -26,6 +25,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     useState(false);
   // const dsDigger = new JSONDigger(data, "id", "organisations");
   const timerRef = useRef(null);
+  const isFreeLayout = dsDigger?.ds?.document?.layoutMode === "free";
 
   // build schema dynamic enum values for linkedChartId
   const linkedEnum = [""];
@@ -39,7 +39,6 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     CollapsibleField: CollapsibleField,
     ArrayFieldTemplate: ArrayFieldTemplate,
     UriSearch: UriSearch,
-    MainOrganisation: MainOrganisation,
     CustomDropdown: CustomDropdown,
   };
 
@@ -47,7 +46,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   definitions.definitions.organisation.properties.linkedChartId = {
     ...(definitions.definitions.organisation.properties.linkedChartId || {}),
     type: "string",
-    title: "Unterkategorisierende Organisation (verknüpftes Organigram)",
+    title: "Verlinktes / verknüpftes Organigramm",
     enum: linkedEnum,
     enumNames: linkedEnumNames,
     default: "",
@@ -83,10 +82,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         },
       },
       isMainOrganisation: {
-        "ui:headless": true,
-        "ui:field": "MainOrganisation",
-        dsDigger: dsDigger,
-        selected: selected,
+        "ui:widget": "hidden",
       },
       relationship: {
         "ui:widget": "hidden",
@@ -188,10 +184,14 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
           "ui:help": "Minimale Höhe der Box in Pixeln, 0 = automatisch",
         },
         positionMode: {
-          "ui:widget": "radio",
-          "ui:options": {
-            inline: true,
-          },
+          "ui:widget": isFreeLayout ? "hidden" : "radio",
+          ...(isFreeLayout
+            ? {}
+            : {
+                "ui:options": {
+                  inline: true,
+                },
+              }),
         },
         purposeTextAlign: {
           "ui:widget": "hidden",
@@ -376,7 +376,6 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   };
 
   const getNewNode = () => {
-    const isFreeLayout = dsDigger?.ds?.document?.layoutMode === "free";
     const selectedLayout = selected?.layout || {};
     const baseX = Number.isFinite(selectedLayout.x) ? selectedLayout.x : 80;
     const baseY = Number.isFinite(selectedLayout.y) ? selectedLayout.y : 40;
@@ -479,22 +478,24 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         <br />
       </Form>
       <Stack direction="horizontal" gap={3}>
-        <Button variant="outline-success" onClick={addSiblingNode}>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            fill="currentColor"
-            className="bi me-1 bi-arrow-bar-right"
-            viewBox="0 0 16 16"
-          >
-            <path
-              fillRule="evenodd"
-              d="M6 8a.5.5 0 0 0 .5.5h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L12.293 7.5H6.5A.5.5 0 0 0 6 8zm-2.5 7a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 1 0v13a.5.5 0 0 1-.5.5z"
-            />
-          </svg>
-          Neue Nebenorganisation
-        </Button>
+        {!isFreeLayout && (
+          <Button variant="outline-success" onClick={addSiblingNode}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              fill="currentColor"
+              className="bi me-1 bi-arrow-bar-right"
+              viewBox="0 0 16 16"
+            >
+              <path
+                fillRule="evenodd"
+                d="M6 8a.5.5 0 0 0 .5.5h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L12.293 7.5H6.5A.5.5 0 0 0 6 8zm-2.5 7a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 1 0v13a.5.5 0 0 1-.5.5z"
+              />
+            </svg>
+            Neue Nebenorganisation
+          </Button>
+        )}
         <Button variant="outline-success" onClick={addChildNode}>
           <svg
             xmlns="http://www.w3.org/2000/svg"

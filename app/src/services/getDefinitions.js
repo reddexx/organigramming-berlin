@@ -2,10 +2,21 @@ import orgChart from "../schemas/organization_chart";
 import typeVocabLookup from "./typeVocabLookup";
 import { getCustomFontOptions } from "./customFonts";
 
-const mergeUniqueSorted = (...groups) => {
-  return [...new Set(groups.flat().filter((item) => typeof item === "string" && item.trim()))].sort(
-    (left, right) => left.localeCompare(right, "de")
+const normalizeOptions = (options = []) => {
+  return [...new Set(options.filter((item) => typeof item === "string" && item.trim()))];
+};
+
+const sortOptions = (options = []) => {
+  return [...options].sort((left, right) => left.localeCompare(right, "de"));
+};
+
+const mergeWithCustomFirst = (customOptions = [], defaultOptions = []) => {
+  const normalizedCustomOptions = normalizeOptions(customOptions);
+  const normalizedDefaultOptions = normalizeOptions(defaultOptions).filter(
+    (option) => !normalizedCustomOptions.includes(option)
   );
+
+  return [...sortOptions(normalizedCustomOptions), ...sortOptions(normalizedDefaultOptions)];
 };
 
 export function getDefinitions(data = null) {
@@ -40,27 +51,27 @@ export function getDefinitions(data = null) {
     });
   };
 
-  definitions.definitions.organisation.properties.type.examples = mergeUniqueSorted(
-    orgs,
-    customDepartments
+  definitions.definitions.organisation.properties.type.examples = mergeWithCustomFirst(
+    customDepartments,
+    orgs
   );
-  definitions.definitions.department.properties.type.examples = mergeUniqueSorted(
-    orgs,
-    customDepartments
+  definitions.definitions.department.properties.type.examples = mergeWithCustomFirst(
+    customDepartments,
+    orgs
   );
-  definitions.definitions.organisation.properties.purpose.examples = mergeUniqueSorted(
+  definitions.definitions.organisation.properties.purpose.examples = mergeWithCustomFirst(
     customAdditionalDesignations
   );
-  definitions.definitions.department.properties.purpose.examples = mergeUniqueSorted(
+  definitions.definitions.department.properties.purpose.examples = mergeWithCustomFirst(
     customAdditionalDesignations
   );
-  definitions.definitions.position.properties.positionType.examples = mergeUniqueSorted(
-    persons,
-    customRoles
+  definitions.definitions.position.properties.positionType.examples = mergeWithCustomFirst(
+    customRoles,
+    persons
   );
-  definitions.definitions.position.properties.positionStatus.examples = mergeUniqueSorted(
-    positionStatus,
-    customAdditionalDesignations
+  definitions.definitions.position.properties.positionStatus.examples = mergeWithCustomFirst(
+    customAdditionalDesignations,
+    positionStatus
   );
 
   appendCustomFontOptions(definitions.definitions.document.properties.titleFontFamily);

@@ -1,58 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { Form, Button, Collapse } from "react-bootstrap";
-import { Typeahead } from "react-bootstrap-typeahead";
-import { useDebounce } from "use-debounce";
-import "react-bootstrap-typeahead/css/Typeahead.css";
 
 const UriSearch = (props) => {
-  const { value, formData, onChange, schema } = props;
-  const [options, setOptions] = useState([]);
-  const [inputValue, setInputValue] = useState(value);
-  const [debouncedInputValue] = useDebounce(inputValue, 700);
-  const [isLoading, setIsLoading] = useState(false);
+  const { formData, onChange, schema } = props;
   const [open, setOpen] = useState(false);
   const [editURI, setEditURI] = useState(false);
-
-  const ref = useRef();
-  const url =
-    "https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&errorformat=plaintext&language=de&origin=*&uselang=de&type=item&search=";
-  const labelKey = "label";
-  const valueKey = "url";
-
-  // const urlGND = "https://lobid.org/gnd/search?q=picasso&format=json";
-
-  useEffect(() => {
-    if (debouncedInputValue) {
-      // the input value includes http -> take this as the URI
-      if (debouncedInputValue.includes("http")) {
-        setOptions([
-          {
-            label: debouncedInputValue,
-            description: "selbstdefinierte URI",
-            id: "id",
-            url: debouncedInputValue,
-          },
-        ]);
-      } else {
-        setIsLoading(true);
-
-        fetch(url + debouncedInputValue)
-          .then((response) => response.json())
-          .then((data) => {
-            setIsLoading(false);
-            const opts = data.search.map((d) => {
-              return {
-                label: d.label,
-                description: d.description,
-                id: d.id,
-                url: d.concepturi,
-              };
-            });
-            setOptions(opts);
-          });
-      }
-    }
-  }, [debouncedInputValue]);
 
   function unlink(d) {
     let sameAsUris = formData.sameAsUris.filter(
@@ -64,7 +16,6 @@ const UriSearch = (props) => {
     };
 
     onChange(data);
-    setOptions([]);
   }
 
   return (
@@ -130,7 +81,7 @@ const UriSearch = (props) => {
                   display: "flex",
                 }}
               >
-                <p>{"nur ändern wenn sie sich ganz sicher sind"}</p>
+                <p>{"nur ändern, wenn Sie sich ganz sicher sind"}</p>
                 <Form.Check
                   style={{
                     paddingLeft: "5px",
@@ -139,86 +90,6 @@ const UriSearch = (props) => {
                   checked={editURI}
                 />
               </div>
-
-              <Form.Label>{schema.properties.sameAsUris.title}</Form.Label>
-
-              <Typeahead
-                className="uri-ui"
-                ref={ref}
-                id={"typeahead" + schema.id}
-                labelKey={labelKey}
-                options={options}
-                selectHint={(d) => {
-                  return false;
-                }}
-                placeholder={"Wikidata durchsuchen oder andere URI einfügen"}
-                // disabled={formData.uriSameAs}
-                onChange={(selected) => {
-                  // when something is selected
-                  ref.current?.clear();
-                  if (!selected || !selected[0]) return;
-                  const data = {
-                    uri: formData.uri,
-                    sameAsUris: [
-                      ...(formData.sameAsUris || []),
-                      {
-                        uriSameAs: selected[0][valueKey],
-                        uriSameAsLabel: selected[0]["label"],
-                        uriSameAsDescription: selected[0]["description"],
-                      },
-                    ],
-                  };
-                  // remove focus from input
-                  ref.current?.blur();
-                  onChange(data);
-                  setOptions([]);
-                }}
-                onInputChange={(text) => {
-                  setInputValue(text);
-                }}
-                emptyLabel="Keine URI gefunden"
-                isLoading={isLoading}
-                filterBy={() => true}
-                renderMenuItemChildren={(option, i) => (
-                  <div
-                    style={{
-                      position: "relative",
-                      textOverflow: "ellipsis",
-                      overflow: "hidden",
-                    }}
-                    title={option.label + ": " + option.description}
-                    key={"urikey-" + i}
-                  >
-                    {option.label}
-                    <div
-                      style={{
-                        textOverflow: "ellipsis",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <small>{option.description}</small>
-                    </div>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      fill="currentColor"
-                      className="bi bi-plus-circle"
-                      viewBox="0 0 16 16"
-                      style={{
-                        position: "absolute",
-                        top: "0px",
-                        right: "0px",
-                        stroke: "#132458",
-                        strokeWidth: "0.5px",
-                      }}
-                    >
-                      <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
-                      <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
-                    </svg>
-                  </div>
-                )}
-              ></Typeahead>
               {formData?.sameAsUris && (
                 <div style={{ marginTop: "20px" }}></div>
               )}

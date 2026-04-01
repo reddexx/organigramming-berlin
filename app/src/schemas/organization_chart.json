@@ -651,7 +651,7 @@
       "additionalProperties": false,
       "properties": {
         "uriSameAs": {
-          "title": "Externe Verknüpfung",
+          "title": "Externe URL",
           "type": "string"
         },
         "uriSameAsLabel": {
@@ -665,17 +665,17 @@
       }
     },
     "uri": {
-      "title": "Verknüpfungen (URIs)",
+      "title": "Verknüpfungen (URLs)",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "uri": {
-          "title": "URI",
+          "title": "URL",
           "type": "string"
         },
         "sameAsUris": {
           "type": "array",
-          "title": "Externe Verknüpfung",
+          "title": "Externe URLs",
           "items": {
             "$ref": "#/definitions/sameAsInfo"
           }
