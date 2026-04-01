@@ -6,12 +6,12 @@
   },
   "Amt": {
     "vocab": "berorgs",
-    "name": "Amt",
+    "name": "Firma",
     "type": "org"
   },
   "Bezirksamt": {
     "vocab": "berorgs",
-    "name": "Bezirksamt",
+    "name": "Filiale",
     "type": "org"
   },
   "Büro": {
@@ -31,7 +31,7 @@
   },
   "Landesamt": {
     "vocab": "berorgs",
-    "name": "Landesamt",
+    "name": "Konzern",
     "type": "org"
   },
   "Landesstelle": {

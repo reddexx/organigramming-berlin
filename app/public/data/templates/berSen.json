@@ -708,7 +708,7 @@
           "organisations": [],
           "suborganizationOrientation": "horizontal",
           "type": "",
-          "name": "Nachgeordnete Behörde X",
+          "name": "Nachgeordnete Firma X",
           "id": "ncba48226-e5d7-4c2c-a8d6-ca5cb818dab3",
           "purpose": "z.B. Landesarchiv"
         },
@@ -744,7 +744,7 @@
           ],
           "suborganizationOrientation": "horizontal",
           "type": "",
-          "name": "Nachgeordnete Behörde Z",
+          "name": "Nachgeordnete Firma Z",
           "id": "n6340ce59-1b48-4050-a1ca-41428f095d02",
           "purpose": "z.B. Landesverwaltungsamt"
         },
@@ -781,7 +781,7 @@
           "organisations": [],
           "suborganizationOrientation": "horizontal",
           "type": "",
-          "name": "Nachgeordnete Behörde Y",
+          "name": "Nachgeordnete Firma Y",
           "id": "n46cecea0-1ee0-4cab-ad56-a568d31c436f",
           "purpose": "z.B. Fischereiamt"
         }
