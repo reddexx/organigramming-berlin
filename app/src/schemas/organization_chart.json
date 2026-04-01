@@ -182,10 +182,9 @@
             "Museum",
             "Other",
             "Referat",
-            "Senatskanzlei",
-            "Senatsverwaltung",
+            "Zentrale",
+            "Unternehmensbereich",
             "Serviceeinheit",
-            "Öffentliches Unternehmen",
             "Unternehmen"
           ],
           "title": "Art der Organisation/Einheit"
@@ -517,7 +516,7 @@
       ,
       "linkedChartId": {
         "type": "string",
-        "title": "Unterkategorisierende Organisation (verknüpftes Organigram)",
+        "title": "Verlinktes / verknüpftes Organigramm",
         "default": ""
       },
       "avatar": {
@@ -557,10 +556,10 @@
             "Museum",
             "Other",
             "Referat",
-            "Senatskanzlei",
-            "Senatsverwaltung",
+            "Zentrale",
+            "Unternehmensbereich",
             "Serviceeinheit",
-            "Öffentliches Unternehmen",
+            "Unternehmen",
             "Unternehmen"
           ],
           "title": "Art der Organisationseinheiten"
@@ -588,8 +587,8 @@
             "Büroleiter:in",
             "Pressesprecher:in",
             "Referent:in",
-            "Senator:in",
-            "Staatssekretär:in"
+            "Geschäftsführung",
+            "Bereichsleitung"
           ]
         },
         "positionStatus": {
@@ -648,7 +647,7 @@
     },
     "sameAsInfo": {
       "type": "object",
-      "title": "Information about same as URI",
+      "title": "Informationen zu externer URL",
       "additionalProperties": false,
       "properties": {
         "uriSameAs": {
@@ -656,11 +655,11 @@
           "type": "string"
         },
         "uriSameAsLabel": {
-          "title": "URI Label",
+          "title": "URL-Bezeichnung",
           "type": "string"
         },
         "uriSameAsDescription": {
-          "title": "URI Description",
+          "title": "URL-Beschreibung",
           "type": "string"
         }
       }

@@ -68,7 +68,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         "ui:widget": "hidden",
       },
       type: {
-        "ui:placeholder": "Auswählen o. eingeben z.B. 'Abteilung'",
+        "ui:placeholder": "Auswählen o. eingeben z.B. 'Unternehmensbereich'",
         "ui:field": CustomDropdown,
       },
       purpose: {
@@ -99,7 +99,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
             "ui:field": "UriSearch",
           },
           positionType: {
-            "ui:placeholder": "z.B. Senator:in",
+            "ui:placeholder": "z.B. Geschäftsführung",
             "ui:field": CustomDropdown,
           },
           positionStatus: {
@@ -170,10 +170,11 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         },
         bgStyle: {
           "ui:disabled": !formData.current?.layout?.bgColor,
-          "ui:widget": "radio",
-          "ui:options": {
-            inline: true,
-          },
+          "ui:widget": "select",
+          "ui:placeholder": "Hintergrundstil auswählen",
+          "ui:help": formData.current?.layout?.bgColor
+            ? "Wählen Sie aus, wie die Hintergrundfarbe auf der Box dargestellt werden soll."
+            : "Hintergrundstil wird erst aktiv, wenn eine Hintergrundfarbe gesetzt ist.",
         },
         nodeWidth: {
           "ui:widget": "range",

@@ -107,9 +107,9 @@ const NewDocumetModal = (props) => {
                     onChange={(e) => templateSelected(e)}
                   >
                     <option>Wählen Sie ein Template aus der Liste aus</option>
-                    <option value="berSen">Berliner Senatsverwaltung</option>
-                    <option value="berBez">Berliner Bezirk</option>
-                    <option value="beispielOrg">Beispiel Organisation</option>
+                    <option value="berSen">Verwaltungsvorlage Berlin (Senat)</option>
+                    <option value="berBez">Verwaltungsvorlage Berlin (Bezirk)</option>
+                    <option value="beispielOrg">Beispiel Firma</option>
                   </Form.Select>
                 </Form.Group>
               </Col>

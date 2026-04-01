@@ -2,8 +2,32 @@ import orgChart from "../schemas/organization_chart";
 import typeVocabLookup from "./typeVocabLookup";
 import { getCustomFontOptions } from "./customFonts";
 
+const COMPANY_OPTION_LABELS = {
+  Amt: "Firma",
+  Bezirksamt: "Filiale",
+  Landesamt: "Konzern",
+  Senatskanzlei: "Zentrale",
+  Senatsverwaltung: "Unternehmensbereich",
+  "Öffentliches Unternehmen": "Unternehmen",
+  "Senator:in": "Geschäftsführung",
+  "Staatssekretär:in": "Bereichsleitung",
+  "Bezirksbürgermeister:in": "Standortleitung",
+  "Bezirksstadträt:in": "Bereichsleitung",
+  Amtsleitung: "Geschäftsleitung",
+  "Amtsleiter:in": "Geschäftsführer:in",
+  "Behördliche:r Beauftragte:r": "Beauftragte:r",
+};
+
+const mapCompanyOptionLabel = (option) => COMPANY_OPTION_LABELS[option] || option;
+
 const normalizeOptions = (options = []) => {
-  return [...new Set(options.filter((item) => typeof item === "string" && item.trim()))];
+  return [
+    ...new Set(
+      options
+        .map((item) => (typeof item === "string" ? mapCompanyOptionLabel(item).trim() : item))
+        .filter((item) => typeof item === "string" && item)
+    ),
+  ];
 };
 
 const sortOptions = (options = []) => {

@@ -39,7 +39,7 @@ export const getJoyrideSettings = (controlLayer) => {
       },
       {
         content:
-          "Tragen Sie über diese Maske den Namen Ihres Unternehmens als Dokumenttitel ein. Des Weiteren lässt sich die Ausrichtung des Dokuments (Hochformat oder Querformat) und die Ausgabegröße einstellen. In den Dokumentinformationen können Sie ebenfalls ein Logo einbinden. Bisher sind aus Lizenzgründen nur die Logos der Bezirksverwaltungen auswählbar. Sie können aber ganz einfach selbst eine Bilddatei mit einem Logo hochladen. Neben Datum und Name des Verfassers oder der Verfasserin kann hier auch die Fußzeile bearbeitet werden.",
+          "Tragen Sie über diese Maske den Namen Ihres Unternehmens als Dokumenttitel ein. Des Weiteren lässt sich die Ausrichtung des Dokuments (Hochformat oder Querformat) und die Ausgabegröße einstellen. In den Dokumentinformationen können Sie ebenfalls ein Logo einbinden. Sie können dafür entweder eine vorhandene Vorlage nutzen oder ganz einfach selbst eine Bilddatei mit einem Logo hochladen. Neben Datum und Name des Verfassers oder der Verfasserin kann hier auch die Fußzeile bearbeitet werden.",
         placement: "right",
         styles: {
           options: {
@@ -86,7 +86,7 @@ export const getJoyrideSettings = (controlLayer) => {
       },
       {
         content:
-          "Im Bereich ‚Verknüpfungen (URIs)‘ wird einer Organisationseinheit eine Art Identifikationsnummer zugeordnet. Falls für dieselbe Organisationseinheit bereits eine weitere Identifikationsnummer vergeben wurde, z.B. über die Gemeinsame Normdatei oder Wikidata, kann der Link manuell eingefügt werden, oder über die Suche aufgerufen werden.",
+          "Im Bereich ‚Verknüpfungen (URLs)‘ kann einer Organisationseinheit eine eigene Webadresse oder eine externe Verlinkung zugeordnet werden. Zusätzliche externe URLs können dort ebenfalls manuell hinterlegt und bei Bedarf wieder entfernt werden.",
         placement: "right",
         styles: {
           options: {
@@ -97,7 +97,7 @@ export const getJoyrideSettings = (controlLayer) => {
         spotlightClicks: false,
         disableOverlayClose: true,
         spotlightPadding: 10,
-        target: "[aria-controls='Verknüpfungen (URIs)-collapse']",
+        target: "[aria-controls='Verknüpfungen (URLs)-collapse']",
         title: "Verknüpfungen herstellen (optional)",
       },
       {
@@ -129,7 +129,7 @@ export const getJoyrideSettings = (controlLayer) => {
         target: ".expand-item",
         title: "Personeninformationen bearbeiten",
         content:
-          "Um Daten zu einer Person einzutragen, wie Anrede, Name und Kontaktdaten, öffnen Sie das Dropdown-Menü durch einen Klick auf die Person. Unter 'Verknüpfungen' kann Wikidata nach Einträgen durchsucht und bei Bedarf die URI angepasst werden ",
+          "Um Daten zu einer Person einzutragen, wie Anrede, Name und Kontaktdaten, öffnen Sie das Dropdown-Menü durch einen Klick auf die Person. Unter 'Verknüpfungen' können Sie bei Bedarf die URL dieser Person ergänzen oder anpassen.",
       },
       {
         content:
