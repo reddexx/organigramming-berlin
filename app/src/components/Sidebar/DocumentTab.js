@@ -1,5 +1,5 @@
 import Form from "@rjsf/bootstrap-4";
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Form as BootstrapForm } from "react-bootstrap";
 import FileSelect from "../From/FileSelect";
 import ObjectFieldTemplate from "../From/ObjectFieldTemplate";
@@ -122,6 +122,15 @@ const DocumentTab = ({ data, sendDataUp }) => {
       sendDataUp(data);
     }, 200);
   };
+
+  useEffect(() => {
+    clearTimeout(timerRef.current);
+    setFormData({ ...data });
+
+    return () => {
+      clearTimeout(timerRef.current);
+    };
+  }, [data]);
 
   const onChange = async (e) => {
     const nextFormData = {

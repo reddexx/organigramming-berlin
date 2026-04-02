@@ -292,6 +292,14 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     }
   }, [selected]);
 
+  useEffect(() => {
+    clearTimeout(timerRef.current);
+
+    return () => {
+      clearTimeout(timerRef.current);
+    };
+  }, [selected, dsDigger]);
+
   // linkedChartId handled within the rjsf form; enum injected into schema above
 
   // handle avatar upload: the FileSelect widget will return base64 string
@@ -403,6 +411,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     };
   };
   const addSiblingNode = async () => {
+    clearTimeout(timerRef.current);
     const newNode = getNewNode();
     await dsDigger.addSiblings(selected.id, newNode);
     sendDataUp({ ...dsDigger.ds });
@@ -410,6 +419,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   };
 
   const addChildNode = async () => {
+    clearTimeout(timerRef.current);
     const newNode = getNewNode();
     if (isFreeLayout) {
       dsDigger.addTopLevelNode(newNode);
@@ -421,6 +431,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   };
 
   const removeNode = async () => {
+    clearTimeout(timerRef.current);
     const nodeToRemove = await dsDigger.findNodeById(selected.id);
     const removedNodeIds = collectSubtreeNodeIds(nodeToRemove);
     const nextFreeConnections = removeConnectionsForNodeIds(
