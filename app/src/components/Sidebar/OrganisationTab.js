@@ -5,6 +5,7 @@ import Form from "@rjsf/bootstrap-4";
 import { v4 as uuidv4 } from "uuid";
 import AlertModal from "./AlertModal";
 import getURI from "../../services/getURI";
+import JSONDigger from "../../services/jsonDigger";
 
 import ArrayFieldTemplate from "../From/ArrayFieldTemplate";
 import ObjectFieldTemplate from "../From/ObjectFieldTemplate";
