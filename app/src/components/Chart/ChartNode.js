@@ -268,7 +268,7 @@ const ChartNode = forwardRef(
         {ds.organisations &&
           ds.organisations.length < 1 &&
           ds.layout?.style === "root" && (
-            <Button variant="outline-success" onClick={() => onAddInitNode()}>
+            <Button type="button" variant="outline-success" onClick={() => onAddInitNode()}>
               Neue Organisation anlegen
             </Button>
           )}

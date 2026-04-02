@@ -198,7 +198,7 @@ const ChartContainer = forwardRef(
         },
       };
 
-      await dsDigger.addChildren("n-root", nextNode);
+      dsDigger.addTopLevelNode(nextNode);
 
       const currentConnections = Array.isArray(data?.document?.freeConnections)
         ? data.document.freeConnections

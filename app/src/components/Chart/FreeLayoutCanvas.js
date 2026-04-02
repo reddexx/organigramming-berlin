@@ -141,6 +141,10 @@ const getSideAnchorFromRect = (rect, side, slotAssignment = {}) => {
   })[side];
 };
 
+const getCenterSideAnchor = (rect, side) => {
+  return getAnchorsFromRect(rect)[side];
+};
+
 const getSideBundlePoint = (rect, side) => {
   const centerAnchor = getAnchorsFromRect(rect)[side];
 
@@ -259,6 +263,20 @@ const shouldBundleNodeSide = (endpointGroups, nodeId, side) => {
   return getNodeSideEndpointCount(endpointGroups, nodeId, side) > 1;
 };
 
+const getConnectorRouteAnchor = (
+  rect,
+  side,
+  endpointGroups,
+  nodeId,
+  slotAssignment = {}
+) => {
+  if (shouldBundleNodeSide(endpointGroups, nodeId, side)) {
+    return getCenterSideAnchor(rect, side);
+  }
+
+  return getSideAnchorFromRect(rect, side, slotAssignment);
+};
+
 const resolveConnectionSelection = (
   firstSelection,
   secondSelection,
@@ -326,6 +344,32 @@ const getAnchorElementData = (element) => {
   }
 
   return { nodeId, side };
+};
+
+const getNodeElementData = (element) => {
+  const nodeElement = element?.closest?.(".free-layout-node");
+
+  if (!nodeElement?.id) {
+    return null;
+  }
+
+  return { nodeId: nodeElement.id };
+};
+
+const getNearestAnchorSideForPoint = (pointer, rect) => {
+  if (!pointer || !rect) {
+    return null;
+  }
+
+  const distances = [
+    { side: "top", distance: Math.abs(pointer.y - rect.top) },
+    { side: "right", distance: Math.abs(rect.left + rect.width - pointer.x) },
+    { side: "bottom", distance: Math.abs(rect.top + rect.height - pointer.y) },
+    { side: "left", distance: Math.abs(pointer.x - rect.left) },
+  ];
+
+  distances.sort((firstDistance, secondDistance) => firstDistance.distance - secondDistance.distance);
+  return distances[0]?.side || null;
 };
 
 const getConnectableNodeIds = (sourceNodeId, nodeMetaById) => {
@@ -397,12 +441,30 @@ const getAnchorSelectionAtPointer = ({
     .map((element) => getAnchorElementData(element))
     .find((anchor) => anchor && connectableNodeIds.includes(anchor.nodeId));
   const canvasPointer = getCanvasPointer(clientX, clientY);
+  const targetNode = elementsAtPointer
+    .map((element) => getNodeElementData(element))
+    .find((node) => node && connectableNodeIds.includes(node.nodeId));
 
   if (exactAnchor) {
     return {
       pointer: canvasPointer,
       anchor: exactAnchor,
     };
+  }
+
+  if (targetNode && canvasPointer) {
+    const targetRect = nodeRects[targetNode.nodeId];
+    const side = getNearestAnchorSideForPoint(canvasPointer, targetRect);
+
+    if (side) {
+      return {
+        pointer: canvasPointer,
+        anchor: {
+          nodeId: targetNode.nodeId,
+          side,
+        },
+      };
+    }
   }
 
   return {
@@ -1511,17 +1573,21 @@ const FreeLayoutCanvas = ({
     )
       ? getSideBundlePoint(connector.childRect, connector.end.side)
       : null;
-    const start = getSideAnchorFromRect(
+    const start = getConnectorRouteAnchor(
       connector.parentRect,
       connector.start.side,
+      connectorEndpointLayout.endpointGroups,
+      connector.parentNodeId,
       getConnectorEndpointAssignment(
         connectorEndpointLayout.endpointAssignments,
         `${connector.id}:parent`
       )
     );
-    const end = getSideAnchorFromRect(
+    const end = getConnectorRouteAnchor(
       connector.childRect,
       connector.end.side,
+      connectorEndpointLayout.endpointGroups,
+      connector.childNodeId,
       getConnectorEndpointAssignment(
         connectorEndpointLayout.endpointAssignments,
         `${connector.id}:child`
@@ -1571,17 +1637,21 @@ const FreeLayoutCanvas = ({
       )
         ? getSideBundlePoint(connector.targetRect, connector.targetSide)
         : null;
-      const start = getSideAnchorFromRect(
+      const start = getConnectorRouteAnchor(
         connector.sourceRect,
         connector.sourceSide,
+        connectorEndpointLayout.endpointGroups,
+        connector.sourceNodeId,
         getConnectorEndpointAssignment(
           connectorEndpointLayout.endpointAssignments,
           `${connector.id}:source`
         )
       );
-      const end = getSideAnchorFromRect(
+      const end = getConnectorRouteAnchor(
         connector.targetRect,
         connector.targetSide,
+        connectorEndpointLayout.endpointGroups,
+        connector.targetNodeId,
         getConnectorEndpointAssignment(
           connectorEndpointLayout.endpointAssignments,
           `${connector.id}:target`
@@ -1641,9 +1711,11 @@ const FreeLayoutCanvas = ({
       connectorDragState.editingConnectionId && connectorDragState.editingRole
         ? `${connectorDragState.editingConnectionId}:${connectorDragState.editingRole}`
         : null;
-    const sourceAnchor = getSideAnchorFromRect(
+    const sourceAnchor = getConnectorRouteAnchor(
       sourceRect,
       connectorDragState.side,
+      connectorEndpointLayout.endpointGroups,
+      connectorDragState.nodeId,
       editingEndpointKey
         ? getConnectorEndpointAssignment(
             connectorEndpointLayout.endpointAssignments,
@@ -1684,9 +1756,11 @@ const FreeLayoutCanvas = ({
           connectorDragState.hoveredAnchor.side
         );
 
-        targetAnchor = getSideAnchorFromRect(
+        targetAnchor = getConnectorRouteAnchor(
           hoveredRect,
           connectorDragState.hoveredAnchor.side,
+          connectorEndpointLayout.endpointGroups,
+          connectorDragState.hoveredAnchor.nodeId,
           {
             index: targetSideCount,
             total: targetSideCount + 1,
@@ -1938,23 +2012,24 @@ const FreeLayoutCanvas = ({
       return;
     }
 
-    const targetAnchor = getOppositeAnchorSide(pendingNodeMenu.sourceSide);
+    const nextPendingNodeMenu = pendingNodeMenu;
+    const targetAnchor = getOppositeAnchorSide(nextPendingNodeMenu.sourceSide);
+    setPendingNodeMenu(null);
+
     const createdNode = await onCreateNodeAtPosition({
       position: {
-        x: pendingNodeMenu.pointer.x - canvasOffset.x - 112,
-        y: pendingNodeMenu.pointer.y - canvasOffset.y - 80,
+        x: nextPendingNodeMenu.pointer.x - canvasOffset.x - 112,
+        y: nextPendingNodeMenu.pointer.y - canvasOffset.y - 80,
       },
       connectionDraft: {
-        sourceNodeId: pendingNodeMenu.sourceNodeId,
-        sourceAnchor: pendingNodeMenu.sourceSide,
+        sourceNodeId: nextPendingNodeMenu.sourceNodeId,
+        sourceAnchor: nextPendingNodeMenu.sourceSide,
         targetAnchor,
-        editingConnectionId: pendingNodeMenu.editingConnectionId,
-        editingConnectionType: pendingNodeMenu.editingConnectionType,
-        editingRole: pendingNodeMenu.editingRole,
+        editingConnectionId: nextPendingNodeMenu.editingConnectionId,
+        editingConnectionType: nextPendingNodeMenu.editingConnectionType,
+        editingRole: nextPendingNodeMenu.editingRole,
       },
     });
-
-    setPendingNodeMenu(null);
 
     if (createdNode?.id) {
       selectNodeService.sendSelectedNodeInfo(createdNode.id);
@@ -1997,8 +2072,7 @@ const FreeLayoutCanvas = ({
               <g
                 className="connector-remove-button"
                 transform={`translate(${connector.actionX}, ${connector.actionY})`}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={(event) => handleConnectorRemove(event, connector)}
+                onMouseDown={(event) => handleConnectorRemove(event, connector)}
               >
                 <circle r="11" />
                 <path d="M -4 -4 L 4 4 M 4 -4 L -4 4" />
@@ -2037,8 +2111,18 @@ const FreeLayoutCanvas = ({
             top: `${pendingNodeMenu.pointer.y}px`,
           }}
           onMouseDown={(event) => event.stopPropagation()}
+          onMouseUp={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
         >
-          <button type="button" onClick={handlePendingNodeCreate}>
+          <button
+            type="button"
+            onMouseDown={(event) => event.stopPropagation()}
+            onMouseUp={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              handlePendingNodeCreate();
+            }}
+          >
             Node Hinzufügen
           </button>
         </div>

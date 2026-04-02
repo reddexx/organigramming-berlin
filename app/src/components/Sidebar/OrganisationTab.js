@@ -463,6 +463,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
           {selected && selected.name && <h2>{selected.name}</h2>}
         </div>
         <Button
+          type="button"
           variant="outline-danger"
           className="ms-auto delete-organisation"
           onClick={() => setRemoveNodeAlertModalShow(true)}
@@ -501,7 +502,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       </Form>
       <Stack direction="horizontal" gap={3}>
         {!isFreeLayout && (
-          <Button variant="outline-success" onClick={addSiblingNode}>
+          <Button type="button" variant="outline-success" onClick={addSiblingNode}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -518,7 +519,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
             Neue Nebenorganisation
           </Button>
         )}
-        <Button variant="outline-success" onClick={addChildNode}>
+        <Button type="button" variant="outline-success" onClick={addChildNode}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="16"

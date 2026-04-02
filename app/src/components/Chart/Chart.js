@@ -271,6 +271,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
         <ul className="dropdown-menu" style={contextMenuStyle}>
           <li>
             <Button
+              type="button"
               onClick={() => {
                 copyNode();
               }}
@@ -292,6 +293,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
           </li>
           <li>
             <Button
+              type="button"
               onClick={() => {
                 cutNode();
               }}
@@ -313,6 +315,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
           {clipBoard && (
             <li>
               <Button
+                type="button"
                 onClick={() => {
                   paseNode();
                 }}
@@ -342,6 +345,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
           </li>
           <li>
             <Button
+              type="button"
               onClick={() => {
                 addChildNode();
               }}
@@ -367,6 +371,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
 
           <li>
             <Button
+              type="button"
               onClick={() => {
                 addSiblingNode();
               }}
@@ -395,6 +400,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
           </li>
           <li>
             <Button
+              type="button"
               onClick={() => {
                 removeNode();
               }}
