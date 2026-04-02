@@ -141,6 +141,19 @@ const getSideAnchorFromRect = (rect, side, slotAssignment = {}) => {
   })[side];
 };
 
+const getSideBundlePoint = (rect, side) => {
+  const centerAnchor = getAnchorsFromRect(rect)[side];
+
+  if (!centerAnchor) {
+    return null;
+  }
+
+  return {
+    x: centerAnchor.x + centerAnchor.dx * ANCHOR_OFFSET,
+    y: centerAnchor.y + centerAnchor.dy * ANCHOR_OFFSET,
+  };
+};
+
 const chooseAnchorPair = (parentRect, childRect) => {
   const parentCenterX = parentRect.left + parentRect.width / 2;
   const parentCenterY = parentRect.top + parentRect.height / 2;
@@ -240,6 +253,10 @@ const getConnectorEndpointAssignment = (endpointAssignments, endpointKey) => {
 
 const getNodeSideEndpointCount = (endpointGroups, nodeId, side) => {
   return endpointGroups[`${nodeId}:${side}`]?.length || 0;
+};
+
+const shouldBundleNodeSide = (endpointGroups, nodeId, side) => {
+  return getNodeSideEndpointCount(endpointGroups, nodeId, side) > 1;
 };
 
 const resolveConnectionSelection = (
@@ -698,8 +715,20 @@ const getPathMidpoint = (points) => {
   return pathPoints[pathPoints.length - 1];
 };
 
-const buildOrthogonalConnector = (startAnchor, endAnchor, obstacles, canvasSize) => {
-  const points = createOrthogonalPathPoints(startAnchor, endAnchor, obstacles, canvasSize);
+const buildOrthogonalConnector = (
+  startAnchor,
+  endAnchor,
+  obstacles,
+  canvasSize,
+  options = {}
+) => {
+  const points = createOrthogonalPathPoints(
+    startAnchor,
+    endAnchor,
+    obstacles,
+    canvasSize,
+    options
+  );
 
   return {
     d: buildPathString(points),
@@ -707,20 +736,23 @@ const buildOrthogonalConnector = (startAnchor, endAnchor, obstacles, canvasSize)
   };
 };
 
-const createOrthogonalPathPoints = (startAnchor, endAnchor, obstacles, canvasSize) => {
-  const startLead = {
+const createOrthogonalPathPoints = (
+  startAnchor,
+  endAnchor,
+  obstacles,
+  canvasSize,
+  options = {}
+) => {
+  const defaultStartLead = {
     x: startAnchor.x + startAnchor.dx * ANCHOR_OFFSET,
     y: startAnchor.y + startAnchor.dy * ANCHOR_OFFSET,
   };
-  const endLead = {
+  const defaultEndLead = {
     x: endAnchor.x + endAnchor.dx * ANCHOR_OFFSET,
     y: endAnchor.y + endAnchor.dy * ANCHOR_OFFSET,
   };
-
-  const points = [
-    { x: startAnchor.x, y: startAnchor.y },
-    startLead,
-  ];
+  const startLead = options.startBundlePoint || defaultStartLead;
+  const endLead = options.endBundlePoint || defaultEndLead;
 
   const startIsHorizontal = startAnchor.dx !== 0;
   const endIsHorizontal = endAnchor.dx !== 0;
@@ -741,28 +773,23 @@ const createOrthogonalPathPoints = (startAnchor, endAnchor, obstacles, canvasSiz
   const buildCandidatePoints = (strategyValue, alternateValue) => {
     if (startIsHorizontal && endIsHorizontal) {
       return [
-        { x: startAnchor.x, y: startAnchor.y },
         startLead,
         { x: strategyValue, y: startLead.y },
         { x: strategyValue, y: endLead.y },
         endLead,
-        { x: endAnchor.x, y: endAnchor.y },
       ];
     }
 
     if (!startIsHorizontal && !endIsHorizontal) {
       return [
-        { x: startAnchor.x, y: startAnchor.y },
         startLead,
         { x: startLead.x, y: strategyValue },
         { x: endLead.x, y: strategyValue },
         endLead,
-        { x: endAnchor.x, y: endAnchor.y },
       ];
     }
 
     return [
-      { x: startAnchor.x, y: startAnchor.y },
       startLead,
       startIsHorizontal
         ? { x: alternateValue, y: startLead.y }
@@ -771,7 +798,6 @@ const createOrthogonalPathPoints = (startAnchor, endAnchor, obstacles, canvasSiz
         ? { x: alternateValue, y: endLead.y }
         : { x: endLead.x, y: alternateValue },
       endLead,
-      { x: endAnchor.x, y: endAnchor.y },
     ];
   };
 
@@ -830,23 +856,34 @@ const createOrthogonalPathPoints = (startAnchor, endAnchor, obstacles, canvasSiz
   );
 
   if (clearCandidate) {
-    return dedupePoints(clearCandidate);
+    return dedupePoints([
+      { x: startAnchor.x, y: startAnchor.y },
+      defaultStartLead,
+      ...(options.startBundlePoint ? [options.startBundlePoint] : []),
+      ...clearCandidate.slice(1),
+      ...(options.endBundlePoint ? [defaultEndLead] : []),
+      { x: endAnchor.x, y: endAnchor.y },
+    ]);
   }
 
   // No clear straight candidate found. Build an orthogonal elbow fallback
   const elbowA = [
     { x: startAnchor.x, y: startAnchor.y },
-    startLead,
+    defaultStartLead,
+    ...(options.startBundlePoint ? [options.startBundlePoint] : []),
     { x: startLead.x, y: endLead.y },
     endLead,
+    ...(options.endBundlePoint ? [defaultEndLead] : []),
     { x: endAnchor.x, y: endAnchor.y },
   ];
 
   const elbowB = [
     { x: startAnchor.x, y: startAnchor.y },
-    startLead,
+    defaultStartLead,
+    ...(options.startBundlePoint ? [options.startBundlePoint] : []),
     { x: endLead.x, y: startLead.y },
     endLead,
+    ...(options.endBundlePoint ? [defaultEndLead] : []),
     { x: endAnchor.x, y: endAnchor.y },
   ];
 
@@ -1460,6 +1497,20 @@ const FreeLayoutCanvas = ({
     ]),
   ]);
   const hierarchyConnectors = hierarchyConnectorConfigs.map((connector) => {
+    const startBundlePoint = shouldBundleNodeSide(
+      connectorEndpointLayout.endpointGroups,
+      connector.parentNodeId,
+      connector.start.side
+    )
+      ? getSideBundlePoint(connector.parentRect, connector.start.side)
+      : null;
+    const endBundlePoint = shouldBundleNodeSide(
+      connectorEndpointLayout.endpointGroups,
+      connector.childNodeId,
+      connector.end.side
+    )
+      ? getSideBundlePoint(connector.childRect, connector.end.side)
+      : null;
     const start = getSideAnchorFromRect(
       connector.parentRect,
       connector.start.side,
@@ -1479,7 +1530,10 @@ const FreeLayoutCanvas = ({
     const obstacles = Object.entries(nodeRects)
       .filter(([id]) => id !== connector.childNodeId && id !== connector.parentNodeId)
       .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
-    const connectorPath = buildOrthogonalConnector(start, end, obstacles, canvasSize);
+    const connectorPath = buildOrthogonalConnector(start, end, obstacles, canvasSize, {
+      startBundlePoint,
+      endBundlePoint,
+    });
     const isPendingConnector =
       connectorDragState &&
       (connectorDragState.nodeId === connector.childNodeId ||
@@ -1503,6 +1557,20 @@ const FreeLayoutCanvas = ({
   });
   const freeLayoutConnectors = freeLayoutConnectorConfigs
     .map((connector) => {
+      const startBundlePoint = shouldBundleNodeSide(
+        connectorEndpointLayout.endpointGroups,
+        connector.sourceNodeId,
+        connector.sourceSide
+      )
+        ? getSideBundlePoint(connector.sourceRect, connector.sourceSide)
+        : null;
+      const endBundlePoint = shouldBundleNodeSide(
+        connectorEndpointLayout.endpointGroups,
+        connector.targetNodeId,
+        connector.targetSide
+      )
+        ? getSideBundlePoint(connector.targetRect, connector.targetSide)
+        : null;
       const start = getSideAnchorFromRect(
         connector.sourceRect,
         connector.sourceSide,
@@ -1529,7 +1597,10 @@ const FreeLayoutCanvas = ({
           ([id]) => id !== connector.sourceNodeId && id !== connector.targetNodeId
         )
         .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
-      const connectorPath = buildOrthogonalConnector(start, end, obstacles, canvasSize);
+      const connectorPath = buildOrthogonalConnector(start, end, obstacles, canvasSize, {
+        startBundlePoint,
+        endBundlePoint,
+      });
       const isPendingConnector =
         connectorDragState &&
         (connectorDragState.nodeId === connector.sourceNodeId ||
@@ -1593,6 +1664,15 @@ const FreeLayoutCanvas = ({
           }
     );
     let targetAnchor;
+    const sourceBundlePoint =
+      getNodeSideEndpointCount(
+        connectorEndpointLayout.endpointGroups,
+        connectorDragState.nodeId,
+        connectorDragState.side
+      ) > 1
+        ? getSideBundlePoint(sourceRect, connectorDragState.side)
+        : null;
+    let targetBundlePoint = null;
 
     if (connectorDragState.hoveredAnchor?.nodeId) {
       const hoveredRect = nodeRects[connectorDragState.hoveredAnchor.nodeId];
@@ -1612,6 +1692,12 @@ const FreeLayoutCanvas = ({
             total: targetSideCount + 1,
           }
         );
+        if (targetSideCount > 0) {
+          targetBundlePoint = getSideBundlePoint(
+            hoveredRect,
+            connectorDragState.hoveredAnchor.side
+          );
+        }
       }
     }
 
@@ -1642,7 +1728,10 @@ const FreeLayoutCanvas = ({
       .filter(([id]) => id !== connectorDragState.nodeId && id !== targetNodeId)
       .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
 
-    return buildOrthogonalConnector(sourceAnchor, targetAnchor, obstacles, canvasSize).d;
+    return buildOrthogonalConnector(sourceAnchor, targetAnchor, obstacles, canvasSize, {
+      startBundlePoint: sourceBundlePoint,
+      endBundlePoint: targetBundlePoint,
+    }).d;
   }, [canvasSize, connectorDragState, connectorEndpointLayout, nodeRects]);
 
   const handleCanvasMouseDown = (event) => {
