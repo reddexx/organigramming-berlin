@@ -18,6 +18,7 @@ import {
 
 const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin", onOpenLinkedChart }, ref) => {
   const orgchart = useRef();
+  const dataRef = useRef(data);
   const normalizedMode = String(mode || "").trim().toLowerCase();
   const isAdminMode = normalizedMode === "admin";
 
@@ -57,16 +58,21 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
     },
   }));
 
-  const [ds, setDS] = useState(data);
   const [selectedNode, setSelectedNode] = useState(null);
   const [contextMenuStyle, setContextMenuStyle] = useState("");
   const [clipBoard, setClipBoard] = useState({});
 
-  const dsDigger = new JSONDigger(data, "id", "organisations");
-
   useEffect(() => {
-    setDS({ ...data });
+    dataRef.current = data;
   }, [data, update]);
+
+  const createDigger = () => {
+    return new JSONDigger(
+      JSON.parse(JSON.stringify(dataRef.current)),
+      "id",
+      "organisations"
+    );
+  };
 
   const readSelectedNode = (nodeData, options = {}) => {
     if (options.openSidebar !== false) {
@@ -98,9 +104,9 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
     });
   };
 
-  const getNewNode = () => {
-    const isFreeLayout = data?.document?.layoutMode === "free";
-    const selectedLayout = selectedNode?.layout || {};
+  const getNewNode = (baseNode = selectedNode) => {
+    const isFreeLayout = dataRef.current?.document?.layoutMode === "free";
+    const selectedLayout = baseNode?.layout || {};
     const baseX = Number.isFinite(selectedLayout.x) ? selectedLayout.x : 80;
     const baseY = Number.isFinite(selectedLayout.y) ? selectedLayout.y : 40;
 
@@ -123,10 +129,17 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
   };
 
   const addSiblingNode = async () => {
+    const currentSelectedNode = selectedNode;
+
+    if (!currentSelectedNode) {
+      return;
+    }
+
     setSelected(null);
     setSelectedNode(null);
-    const newNode = getNewNode();
-    await dsDigger.addSiblings(selectedNode.id, newNode);
+    const dsDigger = createDigger();
+    const newNode = getNewNode(currentSelectedNode);
+    await dsDigger.addSiblings(currentSelectedNode.id, newNode);
     await sendDataUp({ ...dsDigger.ds });
     setSelected({ ...newNode });
     setSelectedNode({ ...newNode });
@@ -134,13 +147,20 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
   };
 
   const addChildNode = async () => {
-    await setSelected(null);
+    const currentSelectedNode = selectedNode;
+
+    if (!currentSelectedNode) {
+      return;
+    }
+
+    setSelected(null);
     setSelectedNode(null);
-    const newNode = getNewNode();
-    if (data?.document?.layoutMode === "free") {
+    const dsDigger = createDigger();
+    const newNode = getNewNode(currentSelectedNode);
+    if (dataRef.current?.document?.layoutMode === "free") {
       dsDigger.addTopLevelNode(newNode);
     } else {
-      await dsDigger.addChildren(selectedNode.id, newNode);
+      await dsDigger.addChildren(currentSelectedNode.id, newNode);
     }
     await sendDataUp({ ...dsDigger.ds });
     setSelected({ ...newNode });
@@ -149,7 +169,8 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
   };
 
   const onAddInitNode = async () => {
-    const newNode = getNewNode();
+    const dsDigger = createDigger();
+    const newNode = getNewNode(null);
     await dsDigger.addInitNode(newNode);
     setSelected(newNode);
     setSelectedNode(newNode);
@@ -157,16 +178,23 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
   };
 
   const removeNode = async () => {
+    const currentSelectedNode = selectedNode;
+
+    if (!currentSelectedNode) {
+      return;
+    }
+
     onCloseContextMenu();
-    const nodeToRemove = await dsDigger.findNodeById(selectedNode.id);
+    const dsDigger = createDigger();
+    const nodeToRemove = await dsDigger.findNodeById(currentSelectedNode.id);
     const removedNodeIds = collectSubtreeNodeIds(nodeToRemove);
     const nextFreeConnections = removeConnectionsForNodeIds(
       dsDigger?.ds?.document?.freeConnections,
       removedNodeIds
     );
-    await setSelected(null);
+    setSelected(null);
     setSelectedNode(null);
-    await dsDigger.removeNodes(selectedNode.id);
+    await dsDigger.removeNodes(currentSelectedNode.id);
     await sendDataUp({
       ...dsDigger.ds,
       document: {
@@ -183,16 +211,24 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
   };
 
   const cutNode = async () => {
-    let copyNode = { ...selectedNode, id: "n" + uuidv4() };
-    const nodeToRemove = await dsDigger.findNodeById(selectedNode.id);
+    const currentSelectedNode = selectedNode;
+
+    if (!currentSelectedNode) {
+      return;
+    }
+
+    const dsDigger = createDigger();
+    let copyNode = { ...currentSelectedNode, id: "n" + uuidv4() };
+    const nodeToRemove = await dsDigger.findNodeById(currentSelectedNode.id);
     const removedNodeIds = collectSubtreeNodeIds(nodeToRemove);
     const nextFreeConnections = removeConnectionsForNodeIds(
       dsDigger?.ds?.document?.freeConnections,
       removedNodeIds
     );
-    await dsDigger.removeNodes(selectedNode.id);
+    await dsDigger.removeNodes(currentSelectedNode.id);
     setClipBoard(copyNode);
     setSelected(null);
+    setSelectedNode(null);
     await sendDataUp({
       ...dsDigger.ds,
       document: {
@@ -214,11 +250,17 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
   };
 
   const paseNode = async () => {
+    const currentSelectedNode = selectedNode;
+    const dsDigger = createDigger();
     const _clipBoard = assignNewIds(clipBoard);
-    if (data?.document?.layoutMode === "free") {
+    if (dataRef.current?.document?.layoutMode === "free") {
       dsDigger.addTopLevelNode(_clipBoard);
     } else {
-      await dsDigger.addChildren(selectedNode.id, _clipBoard);
+      if (!currentSelectedNode) {
+        return;
+      }
+
+      await dsDigger.addChildren(currentSelectedNode.id, _clipBoard);
     }
     sendDataUp({ ...dsDigger.ds });
     onCloseContextMenu();
@@ -241,7 +283,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
       <OrganizationChart
         tabIndex="0"
         ref={orgchart}
-        data={ds}
+        data={data}
         update={update}
         collapsible={false}
         // multipleSelect={isMultipleSelect}

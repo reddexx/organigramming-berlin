@@ -29,7 +29,16 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     useState(false);
   // const dsDigger = new JSONDigger(data, "id", "organisations");
   const timerRef = useRef(null);
+  const dsDiggerRef = useRef(dsDigger);
   const isFreeLayout = dsDigger?.ds?.document?.layoutMode === "free";
+
+  const createDigger = () => {
+    return new JSONDigger(
+      JSON.parse(JSON.stringify(dsDiggerRef.current?.ds || {})),
+      "id",
+      "organisations"
+    );
+  };
 
   // build schema dynamic enum values for linkedChartId
   const linkedEnum = [""];
@@ -283,6 +292,10 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   };
 
   useEffect(() => {
+    dsDiggerRef.current = dsDigger;
+  }, [dsDigger]);
+
+  useEffect(() => {
     if (selected != null) {
       setFormData({ current: { ...selected } });
       setIdPrefix(selected.id);
@@ -343,8 +356,9 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   const handleSendDataUp = async (data) => {
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
-      await dsDigger.updateNode(data);
-      sendDataUp(dsDigger.ds);
+      const nextDigger = createDigger();
+      await nextDigger.updateNode(data);
+      sendDataUp(nextDigger.ds);
     }, 500);
   };
 
@@ -412,38 +426,41 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   };
   const addSiblingNode = async () => {
     clearTimeout(timerRef.current);
+    const nextDigger = createDigger();
     const newNode = getNewNode();
-    await dsDigger.addSiblings(selected.id, newNode);
-    sendDataUp({ ...dsDigger.ds });
+    await nextDigger.addSiblings(selected.id, newNode);
+    sendDataUp({ ...nextDigger.ds });
     setSelected(newNode);
   };
 
   const addChildNode = async () => {
     clearTimeout(timerRef.current);
+    const nextDigger = createDigger();
     const newNode = getNewNode();
     if (isFreeLayout) {
-      dsDigger.addTopLevelNode(newNode);
+      nextDigger.addTopLevelNode(newNode);
     } else {
-      await dsDigger.addChildren(selected.id, newNode);
+      await nextDigger.addChildren(selected.id, newNode);
     }
-    sendDataUp({ ...dsDigger.ds });
+    sendDataUp({ ...nextDigger.ds });
     setSelected(newNode);
   };
 
   const removeNode = async () => {
     clearTimeout(timerRef.current);
-    const nodeToRemove = await dsDigger.findNodeById(selected.id);
+    const nextDigger = createDigger();
+    const nodeToRemove = await nextDigger.findNodeById(selected.id);
     const removedNodeIds = collectSubtreeNodeIds(nodeToRemove);
     const nextFreeConnections = removeConnectionsForNodeIds(
-      dsDigger?.ds?.document?.freeConnections,
+      nextDigger?.ds?.document?.freeConnections,
       removedNodeIds
     );
 
-    await dsDigger.removeNodes(selected.id);
+    await nextDigger.removeNodes(selected.id);
     sendDataUp({
-      ...dsDigger.ds,
+      ...nextDigger.ds,
       document: {
-        ...(dsDigger.ds.document || {}),
+        ...(nextDigger.ds.document || {}),
         freeConnections: nextFreeConnections,
       },
     });
@@ -452,7 +469,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
 
   // Custom validation function
   const customValidate = (formData, errors) => {
-    const validatorName = dsDigger?.ds?.settings?.validator;
+    const validatorName = dsDiggerRef.current?.ds?.settings?.validator;
     return checkErrors(formData, errors, validatorName, "organisation");
   };
 

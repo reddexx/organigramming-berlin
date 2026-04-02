@@ -1,6 +1,7 @@
 import React, {
   useState,
   useEffect,
+  useMemo,
   useRef,
   forwardRef,
   useImperativeHandle,
@@ -95,6 +96,7 @@ const ChartContainer = forwardRef(
     const chart = useRef();
     const paper = useRef();
     const topNode = useRef();
+    const dataRef = useRef(data);
 
     const [startX, setStartX] = useState(0);
     const [startY, setStartY] = useState(0);
@@ -110,16 +112,49 @@ const ChartContainer = forwardRef(
     const [sizeWarning, setSizeWarning] = useState(false);
     const [paperSize, setPaperSize] = useState("");
 
-    const [node, setNode] = useState({
-      id: "n-root",
-      name: "TOP LEVEL",
-      layout: { style: "root" },
-      organisations: JSON.parse(JSON.stringify(data.organisations)),
-    });
-
-    const dsDigger = new JSONDigger(node, "id", "organisations");
+    const node = useMemo(
+      () => ({
+        id: "n-root",
+        name: "TOP LEVEL",
+        layout: { style: "root" },
+        organisations: JSON.parse(JSON.stringify(data.organisations || [])),
+      }),
+      [data.organisations]
+    );
     const isFreeLayout = data?.document?.layoutMode === "free";
     const customFontFaceCss = buildCustomFontFaceCss(data?.settings?.customFonts || []);
+
+    const createDigger = () => {
+      return new JSONDigger(
+        {
+          id: "n-root",
+          name: "TOP LEVEL",
+          layout: { style: "root" },
+          organisations: JSON.parse(JSON.stringify(dataRef.current.organisations || [])),
+        },
+        "id",
+        "organisations"
+      );
+    };
+
+    const buildNextData = (rootNode, documentPatch = null) => {
+      return {
+        ...dataRef.current,
+        ...(documentPatch !== null
+          ? {
+              document: {
+                ...(dataRef.current.document || {}),
+                ...documentPatch,
+              },
+            }
+          : {}),
+        organisations: [...(rootNode.organisations || [])],
+      };
+    };
+
+    useEffect(() => {
+      dataRef.current = data;
+    }, [data]);
 
     useEffect(() => {
       resetViewHandler();
@@ -129,13 +164,6 @@ const ChartContainer = forwardRef(
     }, []);
 
     useEffect(() => {
-      setNode({
-        id: "n-root",
-        name: "TOP LEVEL",
-        layout: { style: "root" },
-        organisations: JSON.parse(JSON.stringify(data.organisations)),
-      });
-
       setTimeout(() => {
         updateChartHandler();
       }, 50);
@@ -147,12 +175,14 @@ const ChartContainer = forwardRef(
     }, [update, data, paperSize]);
 
     const changeHierarchy = async (draggedItemData, dropTargetId) => {
+      const dsDigger = createDigger();
       await dsDigger.removeNode(draggedItemData.id);
       await dsDigger.addChildren(dropTargetId, draggedItemData);
-      sendDataUp({ ...data, organisations: [...dsDigger.ds.organisations] });
+      sendDataUp(buildNextData(dsDigger.ds));
     };
 
     const updateNodeLayout = async (nodeId, layoutPatch) => {
+      const dsDigger = createDigger();
       const currentNode = await dsDigger.findNodeById(nodeId);
       await dsDigger.updateNode({
         ...currentNode,
@@ -162,29 +192,24 @@ const ChartContainer = forwardRef(
         },
       });
 
-      sendDataUp({ ...data, organisations: [...dsDigger.ds.organisations] });
+      sendDataUp(buildNextData(dsDigger.ds));
     };
 
     const updateFreeConnections = async (nextConnectionsOrUpdater) => {
-      const currentConnections = Array.isArray(data?.document?.freeConnections)
-        ? data.document.freeConnections
+      const dsDigger = createDigger();
+      const currentConnections = Array.isArray(dataRef.current?.document?.freeConnections)
+        ? dataRef.current.document.freeConnections
         : [];
       const nextConnections =
         typeof nextConnectionsOrUpdater === "function"
           ? nextConnectionsOrUpdater(currentConnections)
           : nextConnectionsOrUpdater;
 
-      sendDataUp({
-        ...data,
-        document: {
-          ...data.document,
-          freeConnections: nextConnections,
-        },
-        organisations: [...dsDigger.ds.organisations],
-      });
+      sendDataUp(buildNextData(dsDigger.ds, { freeConnections: nextConnections }));
     };
 
     const createFreeLayoutNode = async ({ position, connectionDraft } = {}) => {
+      const dsDigger = createDigger();
       const nextNode = {
         type: "",
         name: "Organisation",
@@ -200,8 +225,8 @@ const ChartContainer = forwardRef(
 
       dsDigger.addTopLevelNode(nextNode);
 
-      const currentConnections = Array.isArray(data?.document?.freeConnections)
-        ? data.document.freeConnections
+      const currentConnections = Array.isArray(dataRef.current?.document?.freeConnections)
+        ? dataRef.current.document.freeConnections
         : [];
       let nextConnections = currentConnections;
 
@@ -244,14 +269,7 @@ const ChartContainer = forwardRef(
         }
       }
 
-      sendDataUp({
-        ...data,
-        document: {
-          ...data.document,
-          freeConnections: nextConnections,
-        },
-        organisations: [...dsDigger.ds.organisations],
-      });
+      sendDataUp(buildNextData(dsDigger.ds, { freeConnections: nextConnections }));
 
       return nextNode;
     };
