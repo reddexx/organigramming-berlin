@@ -527,6 +527,35 @@
           }
         }
       }
+
+      .free-layout-node-menu {
+        position: absolute;
+        z-index: 4;
+        transform: translate(-50%, -20%);
+        background: rgba($white, 0.98);
+        border: 1px solid rgba($gray-600, 0.18);
+        border-radius: 0.75rem;
+        box-shadow: 0 14px 34px rgba($gray-800, 0.16);
+        padding: 0.35rem;
+
+        button {
+          appearance: none;
+          border: 0;
+          border-radius: 0.55rem;
+          background: transparent;
+          color: $body-color;
+          font-size: 0.9rem;
+          font-weight: 600;
+          padding: 0.55rem 0.8rem;
+          white-space: nowrap;
+
+          &:hover,
+          &:focus-visible {
+            background: rgba($primary, 0.08);
+            outline: none;
+          }
+        }
+      }
     }
   }
   .hidden {

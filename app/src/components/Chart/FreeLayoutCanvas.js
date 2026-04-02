@@ -13,6 +13,7 @@ const propTypes = {
   onCloseContextMenu: PropTypes.func,
   onUpdateNodeLayout: PropTypes.func.isRequired,
   onUpdateFreeConnections: PropTypes.func.isRequired,
+  onCreateNodeAtPosition: PropTypes.func,
 };
 
 const defaultProps = {
@@ -22,6 +23,7 @@ const defaultProps = {
   onClickNode: null,
   onContextMenu: null,
   onCloseContextMenu: null,
+  onCreateNodeAtPosition: null,
 };
 
 const LEVEL_GAP = 220;
@@ -164,6 +166,21 @@ const isValidAnchorSide = (side) => ANCHOR_SIDES.includes(side);
 
 const getConnectionPairKey = (firstNodeId, secondNodeId) =>
   [firstNodeId, secondNodeId].sort().join("::");
+
+const getOppositeAnchorSide = (side) => {
+  switch (side) {
+    case "top":
+      return "bottom";
+    case "right":
+      return "left";
+    case "bottom":
+      return "top";
+    case "left":
+      return "right";
+    default:
+      return "top";
+  }
+};
 
 const getConnectionAnchorPair = (childNode, parentRect, childRect) => {
   const parentAnchors = getAnchorsFromRect(parentRect);
@@ -892,6 +909,7 @@ const FreeLayoutCanvas = ({
   onCloseContextMenu,
   onUpdateNodeLayout,
   onUpdateFreeConnections,
+  onCreateNodeAtPosition,
 }) => {
   const wrapperRef = useRef();
   const nodeRefs = useRef({});
@@ -909,6 +927,7 @@ const FreeLayoutCanvas = ({
   const [connectorDragState, setConnectorDragState] = useState(null);
   const [dragGuides, setDragGuides] = useState([]);
   const [hoveredConnectorId, setHoveredConnectorId] = useState(null);
+  const [pendingNodeMenu, setPendingNodeMenu] = useState(null);
 
   const flattenedNodes = useMemo(() => flattenNodes(nodes), [nodes]);
   const autoPositions = useMemo(() => buildAutoPositions(nodes), [nodes]);
@@ -1299,13 +1318,27 @@ const FreeLayoutCanvas = ({
       const resolvedConnection = targetAnchor
         ? resolveConnectionSelection(sourceAnchor, targetAnchor, nodeMetaById, validFreeConnections)
         : null;
+      const releasePointer =
+        getCanvasPointer(event.clientX, event.clientY) || activeState.pointer;
 
       suppressClickRef.current = true;
       setConnectorDragState(null);
 
       if (!resolvedConnection) {
+        if (releasePointer && onCreateNodeAtPosition) {
+          setPendingNodeMenu({
+            pointer: releasePointer,
+            sourceNodeId: activeState.nodeId,
+            sourceSide: activeState.side,
+            editingConnectionId: activeState.editingConnectionId || null,
+            editingConnectionType: activeState.editingConnectionType || null,
+            editingRole: activeState.editingRole || null,
+          });
+        }
         return;
       }
+
+      setPendingNodeMenu(null);
 
       if (resolvedConnection.type === "hierarchy") {
         await onUpdateNodeLayout(resolvedConnection.childNodeId, {
@@ -1349,6 +1382,7 @@ const FreeLayoutCanvas = ({
     connectorDragState,
     getCanvasPointer,
     nodeMetaById,
+    onCreateNodeAtPosition,
     onUpdateFreeConnections,
     onUpdateNodeLayout,
     validFreeConnections,
@@ -1618,6 +1652,7 @@ const FreeLayoutCanvas = ({
 
     setConnectorDragState(null);
     setHoveredConnectorId(null);
+    setPendingNodeMenu(null);
   };
 
   const handleConnectorRemove = async (event, connector) => {
@@ -1651,6 +1686,7 @@ const FreeLayoutCanvas = ({
     event.stopPropagation();
 
     onCloseContextMenu?.();
+    setPendingNodeMenu(null);
     dragMovedRef.current = false;
     suppressClickRef.current = false;
     // Do NOT call onClickNode or selectNodeService here —
@@ -1673,6 +1709,7 @@ const FreeLayoutCanvas = ({
     event.stopPropagation();
 
     onCloseContextMenu?.();
+    setPendingNodeMenu(null);
     dragMovedRef.current = false;
     suppressClickRef.current = false;
 
@@ -1691,6 +1728,7 @@ const FreeLayoutCanvas = ({
         pointer: canvasPointer,
         hoveredAnchor: null,
         editingConnectionId: connector.connectionId,
+        editingConnectionType: connector.type,
         editingRole: useStart ? "source" : "target",
       });
 
@@ -1709,6 +1747,7 @@ const FreeLayoutCanvas = ({
         pointer: canvasPointer,
         hoveredAnchor: null,
         editingConnectionId: connector.id,
+        editingConnectionType: connector.type,
         editingRole: useChild ? "child" : "parent",
       });
 
@@ -1729,6 +1768,7 @@ const FreeLayoutCanvas = ({
     event.stopPropagation();
 
     onCloseContextMenu?.();
+    setPendingNodeMenu(null);
     setConnectorDragState(null);
     dragMovedRef.current = false;
     setDragState({
@@ -1747,6 +1787,7 @@ const FreeLayoutCanvas = ({
     event.preventDefault();
     event.stopPropagation();
 
+    setPendingNodeMenu(null);
     const measuredRect = nodeRects[node.id];
     const startWidth = node?.layout?.nodeWidth || measuredRect?.width || 224;
     const startHeight =
@@ -1790,6 +1831,8 @@ const FreeLayoutCanvas = ({
   const handleContextMenu = (event, node) => {
     event.preventDefault();
 
+    setPendingNodeMenu(null);
+
     if (onClickNode) {
       onClickNode(node, { openSidebar: false });
     }
@@ -1799,6 +1842,35 @@ const FreeLayoutCanvas = ({
     }
 
     onContextMenu?.(event);
+  };
+
+  const handlePendingNodeCreate = async () => {
+    if (!pendingNodeMenu || !onCreateNodeAtPosition) {
+      return;
+    }
+
+    const targetAnchor = getOppositeAnchorSide(pendingNodeMenu.sourceSide);
+    const createdNode = await onCreateNodeAtPosition({
+      position: {
+        x: pendingNodeMenu.pointer.x - canvasOffset.x - 112,
+        y: pendingNodeMenu.pointer.y - canvasOffset.y - 80,
+      },
+      connectionDraft: {
+        sourceNodeId: pendingNodeMenu.sourceNodeId,
+        sourceAnchor: pendingNodeMenu.sourceSide,
+        targetAnchor,
+        editingConnectionId: pendingNodeMenu.editingConnectionId,
+        editingConnectionType: pendingNodeMenu.editingConnectionType,
+        editingRole: pendingNodeMenu.editingRole,
+      },
+    });
+
+    setPendingNodeMenu(null);
+
+    if (createdNode?.id) {
+      selectNodeService.sendSelectedNodeInfo(createdNode.id);
+      onClickNode?.(createdNode);
+    }
   };
 
   return (
@@ -1868,6 +1940,20 @@ const FreeLayoutCanvas = ({
         )}
         {previewConnector && <path className="preview pending" d={previewConnector} />}
       </svg>
+      {pendingNodeMenu && (
+        <div
+          className="free-layout-node-menu"
+          style={{
+            left: `${pendingNodeMenu.pointer.x}px`,
+            top: `${pendingNodeMenu.pointer.y}px`,
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <button type="button" onClick={handlePendingNodeCreate}>
+            Node Hinzufügen
+          </button>
+        </div>
+      )}
       <ul className="free-layout-list">
         {flattenedNodes.map((nodeMeta) => {
           const { node, level } = nodeMeta;

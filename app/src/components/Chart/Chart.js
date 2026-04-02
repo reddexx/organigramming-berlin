@@ -11,6 +11,10 @@ import JSONDigger from "../../services/jsonDigger";
 import { v4 as uuidv4 } from "uuid";
 import getURI from "../../services/getURI";
 import { isValidHttpUrl } from "../../services/service";
+import {
+  collectSubtreeNodeIds,
+  removeConnectionsForNodeIds,
+} from "../../services/freeLayout";
 
 const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin", onOpenLinkedChart }, ref) => {
   const orgchart = useRef();
@@ -133,7 +137,11 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
     await setSelected(null);
     setSelectedNode(null);
     const newNode = getNewNode();
-    await dsDigger.addChildren(selectedNode.id, newNode);
+    if (data?.document?.layoutMode === "free") {
+      dsDigger.addTopLevelNode(newNode);
+    } else {
+      await dsDigger.addChildren(selectedNode.id, newNode);
+    }
     await sendDataUp({ ...dsDigger.ds });
     setSelected({ ...newNode });
     setSelectedNode({ ...newNode });
@@ -150,10 +158,22 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
 
   const removeNode = async () => {
     onCloseContextMenu();
+    const nodeToRemove = await dsDigger.findNodeById(selectedNode.id);
+    const removedNodeIds = collectSubtreeNodeIds(nodeToRemove);
+    const nextFreeConnections = removeConnectionsForNodeIds(
+      dsDigger?.ds?.document?.freeConnections,
+      removedNodeIds
+    );
     await setSelected(null);
     setSelectedNode(null);
     await dsDigger.removeNodes(selectedNode.id);
-    await sendDataUp({ ...dsDigger.ds });
+    await sendDataUp({
+      ...dsDigger.ds,
+      document: {
+        ...(dsDigger.ds.document || {}),
+        freeConnections: nextFreeConnections,
+      },
+    });
   };
 
   const copyNode = () => {
@@ -164,9 +184,22 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
 
   const cutNode = async () => {
     let copyNode = { ...selectedNode, id: "n" + uuidv4() };
+    const nodeToRemove = await dsDigger.findNodeById(selectedNode.id);
+    const removedNodeIds = collectSubtreeNodeIds(nodeToRemove);
+    const nextFreeConnections = removeConnectionsForNodeIds(
+      dsDigger?.ds?.document?.freeConnections,
+      removedNodeIds
+    );
     await dsDigger.removeNodes(selectedNode.id);
     setClipBoard(copyNode);
     setSelected(null);
+    await sendDataUp({
+      ...dsDigger.ds,
+      document: {
+        ...(dsDigger.ds.document || {}),
+        freeConnections: nextFreeConnections,
+      },
+    });
     onCloseContextMenu();
   };
 
@@ -182,7 +215,11 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
 
   const paseNode = async () => {
     const _clipBoard = assignNewIds(clipBoard);
-    await dsDigger.addChildren(selectedNode.id, _clipBoard);
+    if (data?.document?.layoutMode === "free") {
+      dsDigger.addTopLevelNode(_clipBoard);
+    } else {
+      await dsDigger.addChildren(selectedNode.id, _clipBoard);
+    }
     sendDataUp({ ...dsDigger.ds });
     onCloseContextMenu();
   };

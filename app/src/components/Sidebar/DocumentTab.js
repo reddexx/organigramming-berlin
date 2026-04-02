@@ -5,6 +5,7 @@ import FileSelect from "../From/FileSelect";
 import ObjectFieldTemplate from "../From/ObjectFieldTemplate";
 import MDEditorWidget from "../From/MDEditor";
 import { getDefinitions } from "../../services/getDefinitions";
+import { convertDocumentToFreeLayout } from "../../services/freeLayout";
 import UriSearch from "../From/UriSearch";
 
 const importAll = (r) => {
@@ -123,8 +124,21 @@ const DocumentTab = ({ data, sendDataUp }) => {
   };
 
   const onChange = async (e) => {
-    setFormData({ ...e.formData });
-    handleSendDataUp({ ...e.formData });
+    const nextFormData = {
+      ...formData,
+      ...e.formData,
+      document: {
+        ...(formData.document || {}),
+        ...(e.formData.document || {}),
+      },
+    };
+    const transformedFormData =
+      formData?.document?.layoutMode !== "free" && nextFormData?.document?.layoutMode === "free"
+        ? convertDocumentToFreeLayout(nextFormData)
+        : nextFormData;
+
+    setFormData({ ...transformedFormData });
+    handleSendDataUp({ ...transformedFormData });
   };
 
   const onToggleMainChart = (e) => {

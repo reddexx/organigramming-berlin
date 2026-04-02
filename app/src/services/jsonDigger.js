@@ -387,6 +387,28 @@ export default class JSONDigger {
     this.ds.organisations = [data];
   }
 
+  addTopLevelNode(data) {
+    if (
+      !data ||
+      (data.constructor !== Object && data.constructor !== Array) ||
+      (data.constructor === Object && !Object.keys(data).length) ||
+      (data.constructor === Array && !data.length)
+    ) {
+      throw new Error("Parameter data is invalid.");
+    }
+
+    if (!Array.isArray(this.ds[this.organisations])) {
+      this.ds[this.organisations] = [];
+    }
+
+    if (data.constructor === Array) {
+      this.ds[this.organisations].push(...data);
+      return;
+    }
+
+    this.ds[this.organisations].push(data);
+  }
+
   addRoot(data) {
     if (
       !data ||

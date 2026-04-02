@@ -10,8 +10,10 @@ import { Button, ButtonGroup } from "react-bootstrap";
 import PropTypes from "prop-types";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
+import { v4 as uuidv4 } from "uuid";
 import { selectNodeService, formatDate } from "../../services/service";
 import JSONDigger from "../../services/jsonDigger";
+import getURI from "../../services/getURI";
 import { toPng, toBlob, toJpeg, toSvg } from "html-to-image";
 // import * as htmlToImage from "html-to-image";
 // import { elementToSVG, inlineResources } from "dom-to-svg";
@@ -180,6 +182,78 @@ const ChartContainer = forwardRef(
         },
         organisations: [...dsDigger.ds.organisations],
       });
+    };
+
+    const createFreeLayoutNode = async ({ position, connectionDraft } = {}) => {
+      const nextNode = {
+        type: "",
+        name: "Organisation",
+        id: "n" + uuidv4(),
+        uri: { uri: getURI("organisation") },
+        layout: {
+          style: "default",
+          positionMode: "manual",
+          x: Math.max(0, Math.round(position?.x || 0)),
+          y: Math.max(0, Math.round(position?.y || 0)),
+        },
+      };
+
+      await dsDigger.addChildren("n-root", nextNode);
+
+      const currentConnections = Array.isArray(data?.document?.freeConnections)
+        ? data.document.freeConnections
+        : [];
+      let nextConnections = currentConnections;
+
+      if (connectionDraft?.sourceNodeId && connectionDraft?.sourceAnchor) {
+        if (
+          connectionDraft.editingConnectionType === "free" &&
+          connectionDraft.editingConnectionId &&
+          ["source", "target"].includes(connectionDraft.editingRole)
+        ) {
+          nextConnections = currentConnections.map((connection) => {
+            if (connection.id !== connectionDraft.editingConnectionId) {
+              return connection;
+            }
+
+            return connectionDraft.editingRole === "source"
+              ? {
+                  ...connection,
+                  sourceNodeId: nextNode.id,
+                  sourceAnchor: connectionDraft.targetAnchor,
+                }
+              : {
+                  ...connection,
+                  targetNodeId: nextNode.id,
+                  targetAnchor: connectionDraft.targetAnchor,
+                };
+          });
+        } else {
+          const pairKey = [connectionDraft.sourceNodeId, nextNode.id].sort().join("::");
+          nextConnections = currentConnections.filter(
+            (connection) =>
+              [connection.sourceNodeId, connection.targetNodeId].sort().join("::") !== pairKey
+          );
+          nextConnections.push({
+            id: `free-connection-${pairKey}`,
+            sourceNodeId: connectionDraft.sourceNodeId,
+            targetNodeId: nextNode.id,
+            sourceAnchor: connectionDraft.sourceAnchor,
+            targetAnchor: connectionDraft.targetAnchor,
+          });
+        }
+      }
+
+      sendDataUp({
+        ...data,
+        document: {
+          ...data.document,
+          freeConnections: nextConnections,
+        },
+        organisations: [...dsDigger.ds.organisations],
+      });
+
+      return nextNode;
     };
 
     const clickChartHandler = (event) => {
@@ -751,6 +825,7 @@ const ChartContainer = forwardRef(
                       onCloseContextMenu={onCloseContextMenu}
                       onUpdateNodeLayout={updateNodeLayout}
                       onUpdateFreeConnections={updateFreeConnections}
+                      onCreateNodeAtPosition={createFreeLayoutNode}
                     />
                   ) : (
                     <ul>
