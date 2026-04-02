@@ -33,6 +33,8 @@ const ANCHOR_OFFSET = 24;
 const OBSTACLE_PADDING = 18;
 const ANCHOR_SIDES = ["top", "right", "bottom", "left"];
 const CONNECTOR_EDGE_OVERLAP = 4;
+const EDGE_SLOT_PADDING = 28;
+const EDGE_SLOT_SPACING = 18;
 const GRID_SIZE = 24;
 const ALIGNMENT_THRESHOLD = 8;
 const ANCHOR_FOCUS_DISTANCE = 40;
@@ -56,10 +58,30 @@ const flattenNodes = (nodes, parentId = null, level = 1, result = []) => {
 
 const getNodeWidth = (node) => node?.layout?.nodeWidth || 224;
 
-const getAnchorsFromRect = (rect) => ({
+const getAnchorSlotOffset = (rect, side, index = 0, total = 1) => {
+  if (!rect || total <= 1) {
+    return 0;
+  }
+
+  const span = side === "top" || side === "bottom" ? rect.width : rect.height;
+  const centeredIndex = index - (total - 1) / 2;
+  const maxOffset = Math.max(0, span / 2 - EDGE_SLOT_PADDING);
+
+  return clamp(centeredIndex * EDGE_SLOT_SPACING, -maxOffset, maxOffset);
+};
+
+const getAnchorsFromRect = (rect, slotAssignments = {}) => ({
   top: {
     side: "top",
-    x: rect.left + rect.width / 2,
+    x:
+      rect.left +
+      rect.width / 2 +
+      getAnchorSlotOffset(
+        rect,
+        "top",
+        slotAssignments.top?.index,
+        slotAssignments.top?.total
+      ),
     y: rect.top + CONNECTOR_EDGE_OVERLAP,
     dx: 0,
     dy: -1,
@@ -67,13 +89,29 @@ const getAnchorsFromRect = (rect) => ({
   right: {
     side: "right",
     x: rect.left + rect.width - CONNECTOR_EDGE_OVERLAP,
-    y: rect.top + rect.height / 2,
+    y:
+      rect.top +
+      rect.height / 2 +
+      getAnchorSlotOffset(
+        rect,
+        "right",
+        slotAssignments.right?.index,
+        slotAssignments.right?.total
+      ),
     dx: 1,
     dy: 0,
   },
   bottom: {
     side: "bottom",
-    x: rect.left + rect.width / 2,
+    x:
+      rect.left +
+      rect.width / 2 +
+      getAnchorSlotOffset(
+        rect,
+        "bottom",
+        slotAssignments.bottom?.index,
+        slotAssignments.bottom?.total
+      ),
     y: rect.top + rect.height - CONNECTOR_EDGE_OVERLAP,
     dx: 0,
     dy: 1,
@@ -81,11 +119,25 @@ const getAnchorsFromRect = (rect) => ({
   left: {
     side: "left",
     x: rect.left + CONNECTOR_EDGE_OVERLAP,
-    y: rect.top + rect.height / 2,
+    y:
+      rect.top +
+      rect.height / 2 +
+      getAnchorSlotOffset(
+        rect,
+        "left",
+        slotAssignments.left?.index,
+        slotAssignments.left?.total
+      ),
     dx: -1,
     dy: 0,
   },
 });
+
+const getSideAnchorFromRect = (rect, side, slotAssignment = {}) => {
+  return getAnchorsFromRect(rect, {
+    [side]: slotAssignment,
+  })[side];
+};
 
 const chooseAnchorPair = (parentRect, childRect) => {
   const parentCenterX = parentRect.left + parentRect.width / 2;
@@ -131,6 +183,46 @@ const getConnectionAnchorPair = (childNode, parentRect, childRect) => {
     ...chooseAnchorPair(parentRect, childRect),
     manual: false,
   };
+};
+
+const buildConnectorEndpointLayout = (endpoints = []) => {
+  const endpointGroups = endpoints.reduce((result, endpoint) => {
+    const groupKey = `${endpoint.nodeId}:${endpoint.side}`;
+
+    if (!result[groupKey]) {
+      result[groupKey] = [];
+    }
+
+    result[groupKey].push(endpoint.endpointKey);
+    return result;
+  }, {});
+
+  const endpointAssignments = Object.values(endpointGroups).reduce(
+    (result, endpointKeys) => {
+      endpointKeys.forEach((endpointKey, index) => {
+        result[endpointKey] = {
+          index,
+          total: endpointKeys.length,
+        };
+      });
+
+      return result;
+    },
+    {}
+  );
+
+  return {
+    endpointAssignments,
+    endpointGroups,
+  };
+};
+
+const getConnectorEndpointAssignment = (endpointAssignments, endpointKey) => {
+  return endpointAssignments[endpointKey] || { index: 0, total: 1 };
+};
+
+const getNodeSideEndpointCount = (endpointGroups, nodeId, side) => {
+  return endpointGroups[`${nodeId}:${side}`]?.length || 0;
 };
 
 const resolveConnectionSelection = (
@@ -1264,7 +1356,7 @@ const FreeLayoutCanvas = ({
 
   
 
-  const hierarchyConnectors = flattenedNodes
+  const hierarchyConnectorConfigs = flattenedNodes
     .filter(({ node, parentId }) => parentId && node?.layout?.connectorHidden !== true)
     .map(({ node, parentId }) => {
       const childRect = nodeRects[node.id];
@@ -1274,34 +1366,18 @@ const FreeLayoutCanvas = ({
         return null;
       }
 
-      const { start, end, manual } = getConnectionAnchorPair(node, parentRect, childRect);
-      const obstacles = Object.entries(nodeRects)
-        .filter(([id]) => id !== node.id && id !== parentId)
-        .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
-      const connectorPath = buildOrthogonalConnector(start, end, obstacles, canvasSize);
-      const isPendingConnector =
-        connectorDragState &&
-        (connectorDragState.nodeId === node.id || connectorDragState.nodeId === parentId);
-
       return {
         id: `hierarchy:${parentId}-${node.id}`,
         type: "hierarchy",
-        childNodeId: node.id,
-        d: connectorPath.d,
-        parentSide: start.side,
-        childSide: end.side,
-        start,
-        end,
+        parentRect,
+        childRect,
         parentNodeId: parentId,
         childNodeId: node.id,
-        manual,
-        pending: Boolean(isPendingConnector),
-        actionX: connectorPath.midpoint.x,
-        actionY: connectorPath.midpoint.y,
+        ...getConnectionAnchorPair(node, parentRect, childRect),
       };
     })
     .filter(Boolean);
-  const freeLayoutConnectors = validFreeConnections
+  const freeLayoutConnectorConfigs = validFreeConnections
     .map((connection) => {
       const sourceRect = nodeRects[connection.sourceNodeId];
       const targetRect = nodeRects[connection.targetNodeId];
@@ -1310,8 +1386,105 @@ const FreeLayoutCanvas = ({
         return null;
       }
 
-      const start = getAnchorsFromRect(sourceRect)[connection.sourceAnchor];
-      const end = getAnchorsFromRect(targetRect)[connection.targetAnchor];
+      return {
+        id: `free:${connection.id}`,
+        type: "free",
+        connectionId: connection.id,
+        sourceRect,
+        targetRect,
+        sourceSide: connection.sourceAnchor,
+        targetSide: connection.targetAnchor,
+        sourceNodeId: connection.sourceNodeId,
+        targetNodeId: connection.targetNodeId,
+      };
+    })
+    .filter(Boolean);
+  const connectorEndpointLayout = buildConnectorEndpointLayout([
+    ...hierarchyConnectorConfigs.flatMap((connector) => [
+      {
+        endpointKey: `${connector.id}:parent`,
+        nodeId: connector.parentNodeId,
+        side: connector.start.side,
+      },
+      {
+        endpointKey: `${connector.id}:child`,
+        nodeId: connector.childNodeId,
+        side: connector.end.side,
+      },
+    ]),
+    ...freeLayoutConnectorConfigs.flatMap((connector) => [
+      {
+        endpointKey: `${connector.id}:source`,
+        nodeId: connector.sourceNodeId,
+        side: connector.sourceSide,
+      },
+      {
+        endpointKey: `${connector.id}:target`,
+        nodeId: connector.targetNodeId,
+        side: connector.targetSide,
+      },
+    ]),
+  ]);
+  const hierarchyConnectors = hierarchyConnectorConfigs.map((connector) => {
+    const start = getSideAnchorFromRect(
+      connector.parentRect,
+      connector.start.side,
+      getConnectorEndpointAssignment(
+        connectorEndpointLayout.endpointAssignments,
+        `${connector.id}:parent`
+      )
+    );
+    const end = getSideAnchorFromRect(
+      connector.childRect,
+      connector.end.side,
+      getConnectorEndpointAssignment(
+        connectorEndpointLayout.endpointAssignments,
+        `${connector.id}:child`
+      )
+    );
+    const obstacles = Object.entries(nodeRects)
+      .filter(([id]) => id !== connector.childNodeId && id !== connector.parentNodeId)
+      .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
+    const connectorPath = buildOrthogonalConnector(start, end, obstacles, canvasSize);
+    const isPendingConnector =
+      connectorDragState &&
+      (connectorDragState.nodeId === connector.childNodeId ||
+        connectorDragState.nodeId === connector.parentNodeId);
+
+    return {
+      id: connector.id,
+      type: connector.type,
+      d: connectorPath.d,
+      parentSide: start.side,
+      childSide: end.side,
+      start,
+      end,
+      parentNodeId: connector.parentNodeId,
+      childNodeId: connector.childNodeId,
+      manual: connector.manual,
+      pending: Boolean(isPendingConnector),
+      actionX: connectorPath.midpoint.x,
+      actionY: connectorPath.midpoint.y,
+    };
+  });
+  const freeLayoutConnectors = freeLayoutConnectorConfigs
+    .map((connector) => {
+      const start = getSideAnchorFromRect(
+        connector.sourceRect,
+        connector.sourceSide,
+        getConnectorEndpointAssignment(
+          connectorEndpointLayout.endpointAssignments,
+          `${connector.id}:source`
+        )
+      );
+      const end = getSideAnchorFromRect(
+        connector.targetRect,
+        connector.targetSide,
+        getConnectorEndpointAssignment(
+          connectorEndpointLayout.endpointAssignments,
+          `${connector.id}:target`
+        )
+      );
 
       if (!start || !end) {
         return null;
@@ -1319,26 +1492,26 @@ const FreeLayoutCanvas = ({
 
       const obstacles = Object.entries(nodeRects)
         .filter(
-          ([id]) => id !== connection.sourceNodeId && id !== connection.targetNodeId
+          ([id]) => id !== connector.sourceNodeId && id !== connector.targetNodeId
         )
         .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
       const connectorPath = buildOrthogonalConnector(start, end, obstacles, canvasSize);
       const isPendingConnector =
         connectorDragState &&
-        (connectorDragState.nodeId === connection.sourceNodeId ||
-          connectorDragState.nodeId === connection.targetNodeId);
+        (connectorDragState.nodeId === connector.sourceNodeId ||
+          connectorDragState.nodeId === connector.targetNodeId);
 
       return {
-        id: `free:${connection.id}`,
-        type: "free",
-        connectionId: connection.id,
+        id: connector.id,
+        type: connector.type,
+        connectionId: connector.connectionId,
         d: connectorPath.d,
-        sourceSide: connection.sourceAnchor,
-        targetSide: connection.targetAnchor,
+        sourceSide: connector.sourceSide,
+        targetSide: connector.targetSide,
         start,
         end,
-        sourceNodeId: connection.sourceNodeId,
-        targetNodeId: connection.targetNodeId,
+        sourceNodeId: connector.sourceNodeId,
+        targetNodeId: connector.targetNodeId,
         manual: true,
         pending: Boolean(isPendingConnector),
         actionX: connectorPath.midpoint.x,
@@ -1359,14 +1532,52 @@ const FreeLayoutCanvas = ({
       return null;
     }
 
-    const sourceAnchor = getAnchorsFromRect(sourceRect)[connectorDragState.side];
+    const editingEndpointKey =
+      connectorDragState.editingConnectionId && connectorDragState.editingRole
+        ? `${connectorDragState.editingConnectionId}:${connectorDragState.editingRole}`
+        : null;
+    const sourceAnchor = getSideAnchorFromRect(
+      sourceRect,
+      connectorDragState.side,
+      editingEndpointKey
+        ? getConnectorEndpointAssignment(
+            connectorEndpointLayout.endpointAssignments,
+            editingEndpointKey
+          )
+        : {
+            index: getNodeSideEndpointCount(
+              connectorEndpointLayout.endpointGroups,
+              connectorDragState.nodeId,
+              connectorDragState.side
+            ),
+            total:
+              getNodeSideEndpointCount(
+                connectorEndpointLayout.endpointGroups,
+                connectorDragState.nodeId,
+                connectorDragState.side
+              ) + 1,
+          }
+    );
     let targetAnchor;
 
     if (connectorDragState.hoveredAnchor?.nodeId) {
       const hoveredRect = nodeRects[connectorDragState.hoveredAnchor.nodeId];
 
       if (hoveredRect) {
-        targetAnchor = getAnchorsFromRect(hoveredRect)[connectorDragState.hoveredAnchor.side];
+        const targetSideCount = getNodeSideEndpointCount(
+          connectorEndpointLayout.endpointGroups,
+          connectorDragState.hoveredAnchor.nodeId,
+          connectorDragState.hoveredAnchor.side
+        );
+
+        targetAnchor = getSideAnchorFromRect(
+          hoveredRect,
+          connectorDragState.hoveredAnchor.side,
+          {
+            index: targetSideCount,
+            total: targetSideCount + 1,
+          }
+        );
       }
     }
 
@@ -1398,7 +1609,7 @@ const FreeLayoutCanvas = ({
       .map(([, rect]) => expandRect(toFullRect(rect), OBSTACLE_PADDING));
 
     return buildOrthogonalConnector(sourceAnchor, targetAnchor, obstacles, canvasSize).d;
-  }, [canvasSize, connectorDragState, nodeRects]);
+  }, [canvasSize, connectorDragState, connectorEndpointLayout, nodeRects]);
 
   const handleCanvasMouseDown = (event) => {
     if (event.target.closest(".oc-node, .free-layout-anchor, .free-layout-resize-handle")) {
