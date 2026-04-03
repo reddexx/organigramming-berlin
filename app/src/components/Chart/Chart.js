@@ -9,7 +9,7 @@ import { Button } from "react-bootstrap";
 import OrganizationChart from "./ChartContainer";
 import JSONDigger from "../../services/jsonDigger";
 import { v4 as uuidv4 } from "uuid";
-import getURI from "../../services/getURI";
+import createExampleOrganisation from "../../services/createExampleOrganisation";
 import { isValidHttpUrl } from "../../services/service";
 import {
   collectSubtreeNodeIds,
@@ -110,22 +110,16 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
     const baseX = Number.isFinite(selectedLayout.x) ? selectedLayout.x : 80;
     const baseY = Number.isFinite(selectedLayout.y) ? selectedLayout.y : 40;
 
-    return {
-      type: "",
-      name: "Organisation",
-      id: "n" + uuidv4(),
-      uri: { uri: getURI("organisation") },
-      ...(isFreeLayout
+    return createExampleOrganisation({
+      layout: isFreeLayout
         ? {
-            layout: {
-              style: "default",
-              positionMode: "manual",
-              x: baseX + 260,
-              y: baseY + 120,
-            },
+            style: "default",
+            positionMode: "manual",
+            x: baseX + 260,
+            y: baseY + 120,
           }
-        : {}),
-    };
+        : undefined,
+    });
   };
 
   const addSiblingNode = async () => {

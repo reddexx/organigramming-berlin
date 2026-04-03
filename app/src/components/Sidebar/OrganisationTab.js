@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import FileSelect from "../From/FileSelect";
 import { Button, Stack } from "react-bootstrap";
 import Form from "@rjsf/bootstrap-4";
-import { v4 as uuidv4 } from "uuid";
 import AlertModal from "./AlertModal";
 import getURI from "../../services/getURI";
 import JSONDigger from "../../services/jsonDigger";
+import createExampleOrganisation from "../../services/createExampleOrganisation";
 
 import ArrayFieldTemplate from "../From/ArrayFieldTemplate";
 import ObjectFieldTemplate from "../From/ObjectFieldTemplate";
@@ -408,22 +408,16 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     const baseX = Number.isFinite(selectedLayout.x) ? selectedLayout.x : 80;
     const baseY = Number.isFinite(selectedLayout.y) ? selectedLayout.y : 40;
 
-    return {
-      type: "",
-      name: "Organisation",
-      id: "n" + uuidv4(),
-      uri: { uri: getURI("organisation") },
-      ...(isFreeLayout
+    return createExampleOrganisation({
+      layout: isFreeLayout
         ? {
-            layout: {
-              style: "default",
-              positionMode: "manual",
-              x: baseX + 260,
-              y: baseY + 120,
-            },
+            style: "default",
+            positionMode: "manual",
+            x: baseX + 260,
+            y: baseY + 120,
           }
-        : {}),
-    };
+        : undefined,
+    });
   };
   const addSiblingNode = async () => {
     clearTimeout(timerRef.current);

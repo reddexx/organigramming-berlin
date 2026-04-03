@@ -353,6 +353,24 @@
           }
         }
 
+        .connector-edit-button {
+          pointer-events: all;
+          cursor: pointer;
+
+          circle {
+            fill: $primary;
+            stroke: $white;
+            stroke-width: 2;
+          }
+
+          path {
+            stroke: $white;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+          }
+        }
+
         .alignment-guide {
           stroke: rgba($primary, 0.55);
           stroke-width: 1.5;

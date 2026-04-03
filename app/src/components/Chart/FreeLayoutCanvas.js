@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
+import { Button, Form, Modal } from "react-bootstrap";
 
 import { selectNodeService } from "../../services/service";
 import ChartNodeCard from "./ChartNodeCard";
@@ -44,8 +45,39 @@ const MIN_NODE_WIDTH = 160;
 const MAX_NODE_WIDTH = 480;
 const MIN_NODE_HEIGHT = 0;
 const MAX_NODE_HEIGHT = 640;
+const DEFAULT_CONNECTOR_COLOR = "#6c757d";
+const DEFAULT_CONNECTOR_LINE_STYLE = "solid";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const getConnectorDashArray = (lineStyle) => {
+  switch (lineStyle) {
+    case "dashed":
+      return "8 6";
+    case "dotted":
+      return "2 6";
+    default:
+      return undefined;
+  }
+};
+
+const getConnectorAppearance = (connector) => {
+  if (connector.type === "free") {
+    return {
+      color: connector.color || DEFAULT_CONNECTOR_COLOR,
+      lineStyle: connector.lineStyle || DEFAULT_CONNECTOR_LINE_STYLE,
+      sourceArrow: connector.sourceArrow === true,
+      targetArrow: connector.targetArrow === true,
+    };
+  }
+
+  return {
+    color: connector.color || DEFAULT_CONNECTOR_COLOR,
+    lineStyle: connector.lineStyle || DEFAULT_CONNECTOR_LINE_STYLE,
+    sourceArrow: connector.sourceArrow === true,
+    targetArrow: connector.targetArrow === true,
+  };
+};
 
 const getEstimatedNodeHeight = (nodeRects, nodeId) => nodeRects[nodeId]?.height || 160;
 
@@ -184,19 +216,19 @@ const isValidAnchorSide = (side) => ANCHOR_SIDES.includes(side);
 const getConnectionPairKey = (firstNodeId, secondNodeId) =>
   [firstNodeId, secondNodeId].sort().join("::");
 
-const getOppositeAnchorSide = (side) => {
-  switch (side) {
-    case "top":
-      return "bottom";
-    case "right":
-      return "left";
-    case "bottom":
-      return "top";
-    case "left":
-      return "right";
-    default:
-      return "top";
+const getTargetAnchorSideForNewNode = (sourceAnchor, targetCenter) => {
+  if (!sourceAnchor || !targetCenter) {
+    return "top";
   }
+
+  const deltaX = targetCenter.x - sourceAnchor.x;
+  const deltaY = targetCenter.y - sourceAnchor.y;
+
+  if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    return deltaX >= 0 ? "left" : "right";
+  }
+
+  return deltaY >= 0 ? "top" : "bottom";
 };
 
 const getConnectionAnchorPair = (childNode, parentRect, childRect) => {
@@ -565,13 +597,6 @@ const getDragSnapResult = (nodeId, rawPosition, nodeRects) => {
         otherRect
       ),
       getBestAlignment(
-        movingMetrics.centerX,
-        otherMetrics.centerX,
-        { ...nextPosition, x: otherMetrics.centerX - movingRect.width / 2 },
-        "vertical",
-        otherRect
-      ),
-      getBestAlignment(
         movingMetrics.right,
         otherMetrics.right,
         { ...nextPosition, x: otherMetrics.right - movingRect.width },
@@ -584,13 +609,6 @@ const getDragSnapResult = (nodeId, rawPosition, nodeRects) => {
         movingMetrics.top,
         otherMetrics.top,
         { ...nextPosition, y: otherMetrics.top },
-        "horizontal",
-        otherRect
-      ),
-      getBestAlignment(
-        movingMetrics.centerY,
-        otherMetrics.centerY,
-        { ...nextPosition, y: otherMetrics.centerY - movingRect.height / 2 },
         "horizontal",
         otherRect
       ),
@@ -662,6 +680,193 @@ const getDragSnapResult = (nodeId, rawPosition, nodeRects) => {
 
   return {
     position: nextPosition,
+    guides,
+  };
+};
+
+const getResizeSnapResult = (nodeId, nextLayout, nodeRects, handle) => {
+  const movingRect = nodeRects[nodeId];
+
+  if (!movingRect) {
+    return {
+      layout: nextLayout,
+      guides: [],
+    };
+  }
+
+  const resizedRect = {
+    left: movingRect.left,
+    top: movingRect.top,
+    width: nextLayout.nodeWidth,
+    height: nextLayout.nodeMinHeight,
+  };
+  const movingMetrics = getRectMetrics(resizedRect);
+  let bestVerticalGuide = null;
+  let bestHorizontalGuide = null;
+
+  Object.entries(nodeRects).forEach(([otherNodeId, otherRect]) => {
+    if (otherNodeId === nodeId) {
+      return;
+    }
+
+    const otherMetrics = getRectMetrics(otherRect);
+
+    if (handle === "right" || handle === "corner") {
+      const verticalCandidates = [
+        getBestAlignment(
+          movingMetrics.right,
+          otherMetrics.left,
+          {
+            ...nextLayout,
+            nodeWidth: Math.max(MIN_NODE_WIDTH, Math.round(otherMetrics.left - resizedRect.left)),
+          },
+          "vertical",
+          otherRect
+        ),
+        getBestAlignment(
+          movingMetrics.right,
+          otherMetrics.centerX,
+          {
+            ...nextLayout,
+            nodeWidth: Math.max(
+              MIN_NODE_WIDTH,
+              Math.round(otherMetrics.centerX - resizedRect.left)
+            ),
+          },
+          "vertical",
+          otherRect
+        ),
+        getBestAlignment(
+          movingMetrics.right,
+          otherMetrics.right,
+          {
+            ...nextLayout,
+            nodeWidth: Math.max(MIN_NODE_WIDTH, Math.round(otherMetrics.right - resizedRect.left)),
+          },
+          "vertical",
+          otherRect
+        ),
+      ].filter(Boolean);
+
+      const verticalMatch = verticalCandidates.sort(
+        (left, right) => left.distance - right.distance
+      )[0];
+
+      if (!bestVerticalGuide || (verticalMatch && verticalMatch.distance < bestVerticalGuide.distance)) {
+        bestVerticalGuide = verticalMatch || bestVerticalGuide;
+      }
+    }
+
+    if (handle === "bottom" || handle === "corner") {
+      const horizontalCandidates = [
+        getBestAlignment(
+          movingMetrics.bottom,
+          otherMetrics.top,
+          {
+            ...nextLayout,
+            nodeMinHeight: Math.max(
+              MIN_NODE_HEIGHT,
+              Math.round(otherMetrics.top - resizedRect.top)
+            ),
+          },
+          "horizontal",
+          otherRect
+        ),
+        getBestAlignment(
+          movingMetrics.bottom,
+          otherMetrics.centerY,
+          {
+            ...nextLayout,
+            nodeMinHeight: Math.max(
+              MIN_NODE_HEIGHT,
+              Math.round(otherMetrics.centerY - resizedRect.top)
+            ),
+          },
+          "horizontal",
+          otherRect
+        ),
+        getBestAlignment(
+          movingMetrics.bottom,
+          otherMetrics.bottom,
+          {
+            ...nextLayout,
+            nodeMinHeight: Math.max(
+              MIN_NODE_HEIGHT,
+              Math.round(otherMetrics.bottom - resizedRect.top)
+            ),
+          },
+          "horizontal",
+          otherRect
+        ),
+      ].filter(Boolean);
+
+      const horizontalMatch = horizontalCandidates.sort(
+        (left, right) => left.distance - right.distance
+      )[0];
+
+      if (
+        !bestHorizontalGuide ||
+        (horizontalMatch && horizontalMatch.distance < bestHorizontalGuide.distance)
+      ) {
+        bestHorizontalGuide = horizontalMatch || bestHorizontalGuide;
+      }
+    }
+  });
+
+  let resolvedLayout = { ...nextLayout };
+
+  if (bestVerticalGuide) {
+    resolvedLayout.nodeWidth = clamp(
+      Math.round(bestVerticalGuide.nextPosition.nodeWidth),
+      MIN_NODE_WIDTH,
+      MAX_NODE_WIDTH
+    );
+  }
+
+  if (bestHorizontalGuide) {
+    resolvedLayout.nodeMinHeight = clamp(
+      Math.round(bestHorizontalGuide.nextPosition.nodeMinHeight),
+      MIN_NODE_HEIGHT,
+      MAX_NODE_HEIGHT
+    );
+  }
+
+  const resolvedRect = {
+    left: movingRect.left,
+    top: movingRect.top,
+    width: resolvedLayout.nodeWidth,
+    height: resolvedLayout.nodeMinHeight,
+  };
+  const guides = [];
+
+  if (bestVerticalGuide) {
+    guides.push({
+      orientation: "vertical",
+      x: bestVerticalGuide.value,
+      y1: Math.min(resolvedRect.top, bestVerticalGuide.otherRect.top) - 24,
+      y2:
+        Math.max(
+          resolvedRect.top + resolvedRect.height,
+          bestVerticalGuide.otherRect.top + bestVerticalGuide.otherRect.height
+        ) + 24,
+    });
+  }
+
+  if (bestHorizontalGuide) {
+    guides.push({
+      orientation: "horizontal",
+      y: bestHorizontalGuide.value,
+      x1: Math.min(resolvedRect.left, bestHorizontalGuide.otherRect.left) - 24,
+      x2:
+        Math.max(
+          resolvedRect.left + resolvedRect.width,
+          bestHorizontalGuide.otherRect.left + bestHorizontalGuide.otherRect.width
+        ) + 24,
+    });
+  }
+
+  return {
+    layout: resolvedLayout,
     guides,
   };
 };
@@ -1026,7 +1231,15 @@ const FreeLayoutCanvas = ({
   const [connectorDragState, setConnectorDragState] = useState(null);
   const [dragGuides, setDragGuides] = useState([]);
   const [hoveredConnectorId, setHoveredConnectorId] = useState(null);
+  const [hoveredResizeNodeId, setHoveredResizeNodeId] = useState(null);
   const [pendingNodeMenu, setPendingNodeMenu] = useState(null);
+  const [editingConnector, setEditingConnector] = useState(null);
+  const [connectorEditorValues, setConnectorEditorValues] = useState({
+    sourceArrow: false,
+    targetArrow: false,
+    lineStyle: DEFAULT_CONNECTOR_LINE_STYLE,
+    color: DEFAULT_CONNECTOR_COLOR,
+  });
 
   const flattenedNodes = useMemo(() => flattenNodes(nodes), [nodes]);
   const autoPositions = useMemo(() => buildAutoPositions(nodes), [nodes]);
@@ -1305,14 +1518,24 @@ const FreeLayoutCanvas = ({
         MIN_NODE_HEIGHT,
         MAX_NODE_HEIGHT
       );
+      const { layout: snappedLayout, guides } = getResizeSnapResult(
+        resizeState.node.id,
+        {
+          nodeWidth: nextWidth,
+          nodeMinHeight: nextHeight,
+        },
+        nodeRects,
+        resizeState.handle
+      );
 
       dragMovedRef.current = true;
+      setDragGuides(guides);
       setDraftNodeLayouts((current) => ({
         ...current,
         [resizeState.node.id]: {
           ...(current[resizeState.node.id] || {}),
-          nodeWidth: nextWidth,
-          nodeMinHeight: nextHeight,
+          nodeWidth: snappedLayout.nodeWidth,
+          nodeMinHeight: snappedLayout.nodeMinHeight,
         },
       }));
     };
@@ -1330,6 +1553,7 @@ const FreeLayoutCanvas = ({
       }
 
       dragMovedRef.current = false;
+      setDragGuides([]);
       setDraftNodeLayouts((current) => {
         const nextDrafts = { ...current };
         delete nextDrafts[resizeState.node.id];
@@ -1340,6 +1564,7 @@ const FreeLayoutCanvas = ({
     const handleWindowBlur = () => {
       setResizeState(null);
       dragMovedRef.current = false;
+      setDragGuides([]);
       setDraftNodeLayouts((current) => {
         const nextDrafts = { ...current };
         delete nextDrafts[resizeState.node.id];
@@ -1357,7 +1582,7 @@ const FreeLayoutCanvas = ({
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("blur", handleWindowBlur);
     };
-  }, [draftNodeLayouts, onUpdateNodeLayout, resizeState]);
+  }, [draftNodeLayouts, nodeRects, onUpdateNodeLayout, resizeState]);
 
   useEffect(() => {
     if (!connectorDragState) {
@@ -1529,6 +1754,10 @@ const FreeLayoutCanvas = ({
         targetSide: connection.targetAnchor,
         sourceNodeId: connection.sourceNodeId,
         targetNodeId: connection.targetNodeId,
+        color: connection.color,
+        lineStyle: connection.lineStyle,
+        sourceArrow: connection.sourceArrow,
+        targetArrow: connection.targetArrow,
       };
     })
     .filter(Boolean);
@@ -1619,6 +1848,18 @@ const FreeLayoutCanvas = ({
       pending: Boolean(isPendingConnector),
       actionX: connectorPath.midpoint.x,
       actionY: connectorPath.midpoint.y,
+        color: connector.childNodeId
+          ? nodeMetaById[connector.childNodeId]?.node?.layout?.connectorColor
+          : undefined,
+        lineStyle: connector.childNodeId
+          ? nodeMetaById[connector.childNodeId]?.node?.layout?.connectorLineStyle
+          : undefined,
+        sourceArrow: connector.childNodeId
+          ? nodeMetaById[connector.childNodeId]?.node?.layout?.connectorParentArrow
+          : undefined,
+        targetArrow: connector.childNodeId
+          ? nodeMetaById[connector.childNodeId]?.node?.layout?.connectorChildArrow
+          : undefined,
     };
   });
   const freeLayoutConnectors = freeLayoutConnectorConfigs
@@ -1691,6 +1932,10 @@ const FreeLayoutCanvas = ({
         pending: Boolean(isPendingConnector),
         actionX: connectorPath.midpoint.x,
         actionY: connectorPath.midpoint.y,
+        color: connector.color,
+        lineStyle: connector.lineStyle,
+        sourceArrow: connector.sourceArrow,
+        targetArrow: connector.targetArrow,
       };
     })
     .filter(Boolean);
@@ -1815,6 +2060,7 @@ const FreeLayoutCanvas = ({
 
     setConnectorDragState(null);
     setHoveredConnectorId(null);
+    setHoveredResizeNodeId(null);
     setPendingNodeMenu(null);
   };
 
@@ -1838,6 +2084,51 @@ const FreeLayoutCanvas = ({
       connectorChildAnchor: null,
       connectorHidden: true,
     });
+  };
+
+  const handleConnectorEditOpen = (event, connector) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const appearance = getConnectorAppearance(connector);
+    setEditingConnector(connector);
+    setConnectorEditorValues({
+      sourceArrow: appearance.sourceArrow,
+      targetArrow: appearance.targetArrow,
+      lineStyle: appearance.lineStyle,
+      color: appearance.color,
+    });
+  };
+
+  const handleConnectorEditSave = async () => {
+    if (!editingConnector) {
+      return;
+    }
+
+    if (editingConnector.type === "free") {
+      await onUpdateFreeConnections((currentConnections) =>
+        (currentConnections || []).map((connection) =>
+          connection.id === editingConnector.connectionId
+            ? {
+                ...connection,
+                sourceArrow: connectorEditorValues.sourceArrow,
+                targetArrow: connectorEditorValues.targetArrow,
+                lineStyle: connectorEditorValues.lineStyle,
+                color: connectorEditorValues.color,
+              }
+            : connection
+        )
+      );
+    } else {
+      await onUpdateNodeLayout(editingConnector.childNodeId, {
+        connectorParentArrow: connectorEditorValues.sourceArrow,
+        connectorChildArrow: connectorEditorValues.targetArrow,
+        connectorLineStyle: connectorEditorValues.lineStyle,
+        connectorColor: connectorEditorValues.color,
+      });
+    }
+
+    setEditingConnector(null);
   };
 
   const handleAnchorMouseDown = (event, nodeMeta, side) => {
@@ -2013,7 +2304,14 @@ const FreeLayoutCanvas = ({
     }
 
     const nextPendingNodeMenu = pendingNodeMenu;
-    const targetAnchor = getOppositeAnchorSide(nextPendingNodeMenu.sourceSide);
+    const sourceRect = nodeRects[nextPendingNodeMenu.sourceNodeId];
+    const sourceAnchor = sourceRect
+      ? getAnchorsFromRect(sourceRect)[nextPendingNodeMenu.sourceSide]
+      : null;
+    const targetAnchor = getTargetAnchorSideForNewNode(
+      sourceAnchor,
+      nextPendingNodeMenu.pointer
+    );
     setPendingNodeMenu(null);
 
     const createdNode = await onCreateNodeAtPosition({
@@ -2048,6 +2346,19 @@ const FreeLayoutCanvas = ({
       }}
     >
       <svg className="free-layout-connectors" aria-hidden="true">
+        <defs>
+          <marker
+            id="connector-arrowhead"
+            markerWidth="10"
+            markerHeight="10"
+            refX="8"
+            refY="5"
+            orient="auto-start-reverse"
+            markerUnits="strokeWidth"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" stroke="none" />
+          </marker>
+        </defs>
         {connectors.map((connector) => (
           <g
             key={connector.id}
@@ -2067,16 +2378,36 @@ const FreeLayoutCanvas = ({
                 connector.pending ? " pending" : ""
               }`}
               d={connector.d}
+              style={{
+                stroke: getConnectorAppearance(connector).color,
+                strokeDasharray: getConnectorDashArray(getConnectorAppearance(connector).lineStyle),
+              }}
+              markerStart={
+                getConnectorAppearance(connector).sourceArrow ? "url(#connector-arrowhead)" : undefined
+              }
+              markerEnd={
+                getConnectorAppearance(connector).targetArrow ? "url(#connector-arrowhead)" : undefined
+              }
             />
-            {hoveredConnectorId === connector.id && (
-              <g
-                className="connector-remove-button"
-                transform={`translate(${connector.actionX}, ${connector.actionY})`}
-                onMouseDown={(event) => handleConnectorRemove(event, connector)}
-              >
-                <circle r="11" />
-                <path d="M -4 -4 L 4 4 M 4 -4 L -4 4" />
-              </g>
+            {hoveredConnectorId === connector.id && contentEditable && (
+              <>
+                <g
+                  className="connector-edit-button"
+                  transform={`translate(${connector.actionX - 15}, ${connector.actionY})`}
+                  onMouseDown={(event) => handleConnectorEditOpen(event, connector)}
+                >
+                  <circle r="11" />
+                  <path d="M -3 3 L 3 -3 M -1 -4 L 4 1 M -4 4 L -1 1" />
+                </g>
+                <g
+                  className="connector-remove-button"
+                  transform={`translate(${connector.actionX + 15}, ${connector.actionY})`}
+                  onMouseDown={(event) => handleConnectorRemove(event, connector)}
+                >
+                  <circle r="11" />
+                  <path d="M -4 -4 L 4 4 M 4 -4 L -4 4" />
+                </g>
+              </>
             )}
           </g>
         ))}
@@ -2127,6 +2458,78 @@ const FreeLayoutCanvas = ({
           </button>
         </div>
       )}
+      <Modal show={Boolean(editingConnector)} onHide={() => setEditingConnector(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Verbindung bearbeiten</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="switch"
+                id="connector-source-arrow"
+                label="Pfeil an Quelle anzeigen"
+                checked={connectorEditorValues.sourceArrow}
+                onChange={(event) =>
+                  setConnectorEditorValues((current) => ({
+                    ...current,
+                    sourceArrow: event.target.checked,
+                  }))
+                }
+              />
+              <Form.Check
+                type="switch"
+                id="connector-target-arrow"
+                label="Pfeil an Ziel anzeigen"
+                checked={connectorEditorValues.targetArrow}
+                onChange={(event) =>
+                  setConnectorEditorValues((current) => ({
+                    ...current,
+                    targetArrow: event.target.checked,
+                  }))
+                }
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Linienart</Form.Label>
+              <Form.Select
+                value={connectorEditorValues.lineStyle}
+                onChange={(event) =>
+                  setConnectorEditorValues((current) => ({
+                    ...current,
+                    lineStyle: event.target.value,
+                  }))
+                }
+              >
+                <option value="solid">Durchgezogen</option>
+                <option value="dashed">Gestrichelt</option>
+                <option value="dotted">Gepunktet</option>
+              </Form.Select>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Farbe</Form.Label>
+              <Form.Control
+                type="color"
+                value={connectorEditorValues.color}
+                onChange={(event) =>
+                  setConnectorEditorValues((current) => ({
+                    ...current,
+                    color: event.target.value,
+                  }))
+                }
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setEditingConnector(null)}>
+            Abbrechen
+          </Button>
+          <Button variant="primary" onClick={handleConnectorEditSave}>
+            Speichern
+          </Button>
+        </Modal.Footer>
+      </Modal>
       <ul className="free-layout-list">
         {flattenedNodes.map((nodeMeta) => {
           const { node, level } = nodeMeta;
@@ -2143,6 +2546,7 @@ const FreeLayoutCanvas = ({
             : node;
           const isDragging = dragState?.node?.id === node.id;
           const isResizing = resizeState?.node?.id === node.id;
+          const isResizeHovered = hoveredResizeNodeId === node.id;
           const isPendingNode = connectorDragState?.nodeId === node.id;
           const isHoveredTarget = connectorDragState?.hoveredAnchor?.nodeId === node.id;
           const isConnectableNode = Boolean(
@@ -2194,6 +2598,10 @@ const FreeLayoutCanvas = ({
                 }
                 onClick={(event) => handleNodeClick(event, node)}
                 onMouseDown={(event) => handleNodeMouseDown(event, node)}
+                onMouseEnter={() => setHoveredResizeNodeId(node.id)}
+                onMouseLeave={() =>
+                  setHoveredResizeNodeId((current) => (current === node.id ? null : current))
+                }
                 onContextMenu={(event) => handleContextMenu(event, node)}
                 onDragStart={(event) => event.preventDefault()}
               >
@@ -2230,7 +2638,7 @@ const FreeLayoutCanvas = ({
                     })}
                   </div>
                 )}
-                {contentEditable && (selectedNodeId === node.id || isResizing) && (
+                {contentEditable && (isResizeHovered || isResizing) && (
                   <>
                     <button
                       type="button"

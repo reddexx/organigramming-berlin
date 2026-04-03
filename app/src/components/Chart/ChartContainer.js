@@ -11,10 +11,9 @@ import { Button, ButtonGroup } from "react-bootstrap";
 import PropTypes from "prop-types";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
-import { v4 as uuidv4 } from "uuid";
 import { selectNodeService, formatDate } from "../../services/service";
 import JSONDigger from "../../services/jsonDigger";
-import getURI from "../../services/getURI";
+import createExampleOrganisation from "../../services/createExampleOrganisation";
 import { toPng, toBlob, toJpeg, toSvg } from "html-to-image";
 // import * as htmlToImage from "html-to-image";
 // import { elementToSVG, inlineResources } from "dom-to-svg";
@@ -210,18 +209,14 @@ const ChartContainer = forwardRef(
 
     const createFreeLayoutNode = async ({ position, connectionDraft } = {}) => {
       const dsDigger = createDigger();
-      const nextNode = {
-        type: "",
-        name: "Organisation",
-        id: "n" + uuidv4(),
-        uri: { uri: getURI("organisation") },
+      const nextNode = createExampleOrganisation({
         layout: {
           style: "default",
           positionMode: "manual",
           x: Math.max(0, Math.round(position?.x || 0)),
           y: Math.max(0, Math.round(position?.y || 0)),
         },
-      };
+      });
 
       dsDigger.addTopLevelNode(nextNode);
 
