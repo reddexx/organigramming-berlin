@@ -14,6 +14,7 @@ import rehypeSanitize from "rehype-sanitize";
 import { selectNodeService, formatDate } from "../../services/service";
 import JSONDigger from "../../services/jsonDigger";
 import createExampleOrganisation from "../../services/createExampleOrganisation";
+import createNoteNode from "../../services/createNoteNode";
 import { toPng, toBlob, toJpeg, toSvg } from "html-to-image";
 // import * as htmlToImage from "html-to-image";
 // import { elementToSVG, inlineResources } from "dom-to-svg";
@@ -52,6 +53,8 @@ const propTypes = {
   onCloseContextMenu: PropTypes.func,
   contentEditable: PropTypes.bool,
   onAddInitNode: PropTypes.func,
+  onPasteNodeAtPosition: PropTypes.func,
+  canPasteAtPosition: PropTypes.bool,
 };
 
 const defaultProps = {
@@ -65,6 +68,8 @@ const defaultProps = {
   collapsible: false,
   multipleSelect: false,
   contentEditable: true,
+  onPasteNodeAtPosition: null,
+  canPasteAtPosition: false,
 };
 
 const ChartContainer = forwardRef(
@@ -88,6 +93,8 @@ const ChartContainer = forwardRef(
       onOpenDocument,
       contentEditable,
       onAddInitNode,
+      onPasteNodeAtPosition,
+      canPasteAtPosition,
     },
     ref
   ) => {
@@ -207,16 +214,18 @@ const ChartContainer = forwardRef(
       sendDataUp(buildNextData(dsDigger.ds, { freeConnections: nextConnections }));
     };
 
-    const createFreeLayoutNode = async ({ position, connectionDraft } = {}) => {
+    const createFreeLayoutNode = async ({ position, connectionDraft, kind } = {}) => {
       const dsDigger = createDigger();
-      const nextNode = createExampleOrganisation({
-        layout: {
-          style: "default",
-          positionMode: "manual",
-          x: Math.max(0, Math.round(position?.x || 0)),
-          y: Math.max(0, Math.round(position?.y || 0)),
-        },
-      });
+      const nextNodeLayout = {
+        style: "default",
+        positionMode: "manual",
+        x: Math.max(0, Math.round(position?.x || 0)),
+        y: Math.max(0, Math.round(position?.y || 0)),
+      };
+      const nextNode =
+        kind === "note"
+          ? createNoteNode({ layout: nextNodeLayout })
+          : createExampleOrganisation({ layout: nextNodeLayout });
 
       dsDigger.addTopLevelNode(nextNode);
 
@@ -839,6 +848,8 @@ const ChartContainer = forwardRef(
                       onUpdateNodeLayout={updateNodeLayout}
                       onUpdateFreeConnections={updateFreeConnections}
                       onCreateNodeAtPosition={createFreeLayoutNode}
+                      onPasteNodeAtPosition={onPasteNodeAtPosition}
+                      canPasteAtPosition={canPasteAtPosition}
                     />
                   ) : (
                     <ul>

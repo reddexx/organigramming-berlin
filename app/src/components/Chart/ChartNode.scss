@@ -253,6 +253,47 @@
               }
             }
           }
+
+          &.note-node-card {
+            background-color: transparent;
+            box-shadow: none;
+
+            &:hover {
+              transform: none;
+              box-shadow: rgba($gray-600, 0.18) 0px 6px 18px;
+            }
+
+            .oc-note-content {
+              width: 100%;
+              min-height: inherit;
+              padding: 0.85rem 1rem;
+              font-size: 0.8rem;
+              line-height: 1.45;
+              color: $body-color;
+
+              .wmde-markdown {
+                background: transparent;
+                font-size: inherit;
+                color: inherit;
+
+                h1,
+                h2,
+                h3,
+                h4,
+                h5,
+                h6 {
+                  margin-top: 0;
+                  margin-bottom: 0.5rem;
+                  border-bottom: 0;
+                  padding-bottom: 0;
+                }
+
+                p:last-child {
+                  margin-bottom: 0;
+                }
+              }
+            }
+          }
         }
         &.emphasized {
           $supCurrentColor: lighten($currentColor, 5%);

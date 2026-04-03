@@ -61,6 +61,7 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
   const [selectedNode, setSelectedNode] = useState(null);
   const [contextMenuStyle, setContextMenuStyle] = useState("");
   const [clipBoard, setClipBoard] = useState({});
+  const hasClipboardNode = Boolean(clipBoard && Object.keys(clipBoard).length);
 
   useEffect(() => {
     dataRef.current = data;
@@ -243,6 +244,29 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
     return _node;
   };
 
+  const pasteNodeAtPosition = async ({ position } = {}) => {
+    if (!hasClipboardNode || dataRef.current?.document?.layoutMode !== "free") {
+      return null;
+    }
+
+    const dsDigger = createDigger();
+    const nextNode = assignNewIds(clipBoard);
+    nextNode.layout = {
+      ...(nextNode.layout || {}),
+      style: nextNode.layout?.style || "default",
+      positionMode: "manual",
+      x: Math.max(0, Math.round(position?.x || 0)),
+      y: Math.max(0, Math.round(position?.y || 0)),
+    };
+
+    dsDigger.addTopLevelNode(nextNode);
+    await sendDataUp({ ...dsDigger.ds });
+    setSelected({ ...nextNode });
+    setSelectedNode({ ...nextNode });
+
+    return nextNode;
+  };
+
   const paseNode = async () => {
     const currentSelectedNode = selectedNode;
     const dsDigger = createDigger();
@@ -297,6 +321,8 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
         onAddInitNode={onAddInitNode}
         onContextMenu={onContextMenu}
         onCloseContextMenu={onCloseContextMenu}
+        onPasteNodeAtPosition={pasteNodeAtPosition}
+        canPasteAtPosition={hasClipboardNode}
         onOpenDocument={isAdminMode ? (() => setSelected("document")) : (() => {})}
         pan={true}
         zoom={true}

@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import MDEditor from "@uiw/react-md-editor";
 
 import {
   getContrastTextColor,
@@ -21,6 +22,39 @@ const ChartNodeCard = ({ data }) => {
   const contentFontStyle = data?.layout?.contentFontFamily
     ? { fontFamily: data.layout.contentFontFamily }
     : undefined;
+  const isNoteNode = data?.kind === "note";
+  const borderWidth = Number.isFinite(data?.layout?.borderWidth)
+    ? data.layout.borderWidth
+    : 0;
+  const borderRadius = Number.isFinite(data?.layout?.borderRadius)
+    ? data.layout.borderRadius
+    : 0;
+
+  if (isNoteNode) {
+    return (
+      <div
+        className="oc-container note-node-card"
+        style={{
+          backgroundColor: data?.layout?.bgColor || "transparent",
+          width: data?.layout?.nodeWidth ? `${data.layout.nodeWidth}px` : "",
+          minHeight:
+            data?.layout?.nodeMinHeight && data.layout.nodeMinHeight > 0
+              ? `${data.layout.nodeMinHeight}px`
+              : "",
+          border:
+            borderWidth > 0
+              ? `${borderWidth}px solid ${data?.layout?.borderColor || "#6c757d"}`
+              : "none",
+          borderRadius: `${borderRadius}px`,
+          padding: 0,
+        }}
+      >
+        <div className="oc-note-content" style={contentFontStyle}>
+          <MDEditor.Markdown source={data?.noteText || ""} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

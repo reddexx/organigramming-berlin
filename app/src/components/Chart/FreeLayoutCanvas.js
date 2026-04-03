@@ -15,6 +15,8 @@ const propTypes = {
   onUpdateNodeLayout: PropTypes.func.isRequired,
   onUpdateFreeConnections: PropTypes.func.isRequired,
   onCreateNodeAtPosition: PropTypes.func,
+  onPasteNodeAtPosition: PropTypes.func,
+  canPasteAtPosition: PropTypes.bool,
 };
 
 const defaultProps = {
@@ -25,6 +27,8 @@ const defaultProps = {
   onContextMenu: null,
   onCloseContextMenu: null,
   onCreateNodeAtPosition: null,
+  onPasteNodeAtPosition: null,
+  canPasteAtPosition: false,
 };
 
 const LEVEL_GAP = 220;
@@ -78,6 +82,8 @@ const getConnectorAppearance = (connector) => {
     targetArrow: connector.targetArrow === true,
   };
 };
+
+const isNoteNode = (node) => node?.kind === "note";
 
 const getEstimatedNodeHeight = (nodeRects, nodeId) => nodeRects[nodeId]?.height || 160;
 
@@ -1214,6 +1220,8 @@ const FreeLayoutCanvas = ({
   onUpdateNodeLayout,
   onUpdateFreeConnections,
   onCreateNodeAtPosition,
+  onPasteNodeAtPosition,
+  canPasteAtPosition,
 }) => {
   const wrapperRef = useRef();
   const nodeRefs = useRef({});
@@ -1233,6 +1241,7 @@ const FreeLayoutCanvas = ({
   const [hoveredConnectorId, setHoveredConnectorId] = useState(null);
   const [hoveredResizeNodeId, setHoveredResizeNodeId] = useState(null);
   const [pendingNodeMenu, setPendingNodeMenu] = useState(null);
+  const [canvasContextMenu, setCanvasContextMenu] = useState(null);
   const [editingConnector, setEditingConnector] = useState(null);
   const [connectorEditorValues, setConnectorEditorValues] = useState({
     sourceArrow: false,
@@ -2062,6 +2071,35 @@ const FreeLayoutCanvas = ({
     setHoveredConnectorId(null);
     setHoveredResizeNodeId(null);
     setPendingNodeMenu(null);
+    setCanvasContextMenu(null);
+  };
+
+  const handleCanvasContextMenu = (event) => {
+    if (!contentEditable) {
+      return;
+    }
+
+    if (
+      event.target.closest(
+        ".oc-node, .free-layout-anchor, .free-layout-resize-handle, .connector-group, .free-layout-node-menu"
+      )
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    onCloseContextMenu?.();
+    setPendingNodeMenu(null);
+    setConnectorDragState(null);
+    setHoveredConnectorId(null);
+    setHoveredResizeNodeId(null);
+    setCanvasContextMenu({
+      screenX: event.clientX,
+      screenY: event.clientY,
+      pointer: getCanvasPointer(event.clientX, event.clientY),
+    });
   };
 
   const handleConnectorRemove = async (event, connector) => {
@@ -2069,6 +2107,7 @@ const FreeLayoutCanvas = ({
     event.stopPropagation();
 
     setHoveredConnectorId(null);
+    setCanvasContextMenu(null);
 
     if (connector.type === "free") {
       await onUpdateFreeConnections((currentConnections) =>
@@ -2091,6 +2130,7 @@ const FreeLayoutCanvas = ({
     event.stopPropagation();
 
     const appearance = getConnectorAppearance(connector);
+    setCanvasContextMenu(null);
     setEditingConnector(connector);
     setConnectorEditorValues({
       sourceArrow: appearance.sourceArrow,
@@ -2141,6 +2181,7 @@ const FreeLayoutCanvas = ({
 
     onCloseContextMenu?.();
     setPendingNodeMenu(null);
+    setCanvasContextMenu(null);
     dragMovedRef.current = false;
     suppressClickRef.current = false;
     // Do NOT call onClickNode or selectNodeService here —
@@ -2164,6 +2205,7 @@ const FreeLayoutCanvas = ({
 
     onCloseContextMenu?.();
     setPendingNodeMenu(null);
+    setCanvasContextMenu(null);
     dragMovedRef.current = false;
     suppressClickRef.current = false;
 
@@ -2223,6 +2265,7 @@ const FreeLayoutCanvas = ({
 
     onCloseContextMenu?.();
     setPendingNodeMenu(null);
+    setCanvasContextMenu(null);
     setConnectorDragState(null);
     dragMovedRef.current = false;
     setDragState({
@@ -2252,6 +2295,7 @@ const FreeLayoutCanvas = ({
     onCloseContextMenu?.();
     setConnectorDragState(null);
     setDragState(null);
+    setCanvasContextMenu(null);
     dragMovedRef.current = false;
     setResizeState({
       node,
@@ -2284,8 +2328,10 @@ const FreeLayoutCanvas = ({
 
   const handleContextMenu = (event, node) => {
     event.preventDefault();
+    event.stopPropagation();
 
     setPendingNodeMenu(null);
+    setCanvasContextMenu(null);
 
     if (onClickNode) {
       onClickNode(node, { openSidebar: false });
@@ -2335,11 +2381,55 @@ const FreeLayoutCanvas = ({
     }
   };
 
+  const handleCanvasMenuCreate = async (kind = "organisation") => {
+    if (!canvasContextMenu || !onCreateNodeAtPosition) {
+      return;
+    }
+
+    const nextMenu = canvasContextMenu;
+    setCanvasContextMenu(null);
+
+    const createdNode = await onCreateNodeAtPosition({
+      position: {
+        x: nextMenu.pointer.x - 112,
+        y: nextMenu.pointer.y - 80,
+      },
+      kind,
+    });
+
+    if (createdNode?.id) {
+      selectNodeService.sendSelectedNodeInfo(createdNode.id);
+      onClickNode?.(createdNode);
+    }
+  };
+
+  const handleCanvasMenuPaste = async () => {
+    if (!canvasContextMenu || !onPasteNodeAtPosition) {
+      return;
+    }
+
+    const nextMenu = canvasContextMenu;
+    setCanvasContextMenu(null);
+
+    const pastedNode = await onPasteNodeAtPosition({
+      position: {
+        x: nextMenu.pointer.x - 112,
+        y: nextMenu.pointer.y - 80,
+      },
+    });
+
+    if (pastedNode?.id) {
+      selectNodeService.sendSelectedNodeInfo(pastedNode.id);
+      onClickNode?.(pastedNode);
+    }
+  };
+
   return (
     <div
       ref={wrapperRef}
       className="free-layout-canvas"
       onMouseDown={handleCanvasMouseDown}
+      onContextMenu={handleCanvasContextMenu}
       style={{
         width: `${canvasSize.width}px`,
         height: `${canvasSize.height}px`,
@@ -2458,6 +2548,33 @@ const FreeLayoutCanvas = ({
           </button>
         </div>
       )}
+      {canvasContextMenu && (
+        <div
+          className="free-layout-node-menu free-layout-canvas-menu"
+          style={{
+            left: `${canvasContextMenu.screenX}px`,
+            top: `${canvasContextMenu.screenY}px`,
+            transform: "translate(0, 0)",
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
+          onMouseUp={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button type="button" onClick={() => handleCanvasMenuCreate("organisation")}>
+            Node erstellen
+          </button>
+          <button
+            type="button"
+            onClick={handleCanvasMenuPaste}
+            disabled={!canPasteAtPosition}
+          >
+            Aus Zwischenablage einfügen
+          </button>
+          <button type="button" onClick={() => handleCanvasMenuCreate("note")}>
+            Notiz erstellen
+          </button>
+        </div>
+      )}
       <Modal show={Boolean(editingConnector)} onHide={() => setEditingConnector(null)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Verbindung bearbeiten</Modal.Title>
@@ -2533,6 +2650,7 @@ const FreeLayoutCanvas = ({
       <ul className="free-layout-list">
         {flattenedNodes.map((nodeMeta) => {
           const { node, level } = nodeMeta;
+          const noteNode = isNoteNode(node);
           const position = getDisplayPosition(node);
           const draftLayout = getDraftLayout(node.id);
           const renderedNode = draftLayout
@@ -2550,9 +2668,10 @@ const FreeLayoutCanvas = ({
           const isPendingNode = connectorDragState?.nodeId === node.id;
           const isHoveredTarget = connectorDragState?.hoveredAnchor?.nodeId === node.id;
           const isConnectableNode = Boolean(
-            connectorDragState && connectorDragState.nodeId !== node.id
+            connectorDragState && connectorDragState.nodeId !== node.id && !noteNode
           );
           const showAnchors =
+            !noteNode &&
             contentEditable &&
             (selectedNodeId === node.id ||
               isDragging ||
@@ -2587,6 +2706,7 @@ const FreeLayoutCanvas = ({
                   (isPendingNode ? " pending-connection" : "") +
                   (isConnectableNode ? " connectable-connection" : "") +
                   (isHoveredTarget ? " hovered-connection" : "") +
+                  (noteNode ? " note-node" : "") +
                   (node.layout?.style ? ` ${node.layout.style}` : "") +
                   (isDragging ? " position-dragging" : "") +
                   (isResizing ? " position-dragging" : "") +

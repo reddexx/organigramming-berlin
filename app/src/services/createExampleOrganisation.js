@@ -3,6 +3,7 @@ import getURI from "./getURI";
 
 const createExampleOrganisation = ({ name = "Neue Organisation", layout } = {}) => {
   const nextNode = {
+    kind: "organisation",
     type: "Team",
     name,
     id: "n" + uuidv4(),

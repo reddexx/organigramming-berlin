@@ -193,9 +193,19 @@
           "type": "string",
           "title": "Bezeichnung"
         },
+        "kind": {
+          "type": "string",
+          "title": "Node-Typ",
+          "default": "organisation",
+          "enum": ["organisation", "note"]
+        },
         "altName": {
           "type": "string",
           "title": "Kürzel"
+        },
+        "noteText": {
+          "type": "string",
+          "title": "Notizinhalt"
         },
         "purpose": {
           "type": "string",
@@ -235,6 +245,25 @@
               "default": "default",
               "enum": ["default", "half"],
               "enumNames": ["Voll", "Halb"]
+            },
+            "borderColor": {
+              "title": "Rahmenfarbe",
+              "type": "string",
+              "default": ""
+            },
+            "borderWidth": {
+              "title": "Rahmenstärke",
+              "type": "integer",
+              "default": 0,
+              "minimum": 0,
+              "maximum": 12
+            },
+            "borderRadius": {
+              "title": "Borderradius",
+              "type": "integer",
+              "default": 0,
+              "minimum": 0,
+              "maximum": 48
             },
             "nodeWidth": {
               "title": "Boxbreite",

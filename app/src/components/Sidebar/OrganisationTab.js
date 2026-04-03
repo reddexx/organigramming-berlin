@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import FileSelect from "../From/FileSelect";
-import { Button, Stack } from "react-bootstrap";
-import Form from "@rjsf/bootstrap-4";
+import { Button, Stack, Form as BootstrapForm } from "react-bootstrap";
+import SchemaForm from "@rjsf/bootstrap-4";
+import MDEditor from "@uiw/react-md-editor";
 import AlertModal from "./AlertModal";
 import getURI from "../../services/getURI";
 import JSONDigger from "../../services/jsonDigger";
@@ -32,6 +33,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
   const timerRef = useRef(null);
   const dsDiggerRef = useRef(dsDigger);
   const isFreeLayout = dsDigger?.ds?.document?.layoutMode === "free";
+  const isNoteNode = selected?.kind === "note";
 
   const createDigger = () => {
     return new JSONDigger(
@@ -363,6 +365,21 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     }, 500);
   };
 
+  const handleNoteDataChange = (patch) => {
+    const current = formData.current || selected || {};
+    const nextData = {
+      ...current,
+      ...patch,
+      layout: {
+        ...(current.layout || {}),
+        ...(patch.layout || {}),
+      },
+    };
+
+    setFormData({ current: nextData });
+    handleSendDataUp(nextData);
+  };
+
   const onChange = async (e) => {
     // fix: if there is no URI for an organisation
     if (e.formData.current.uri?.uri === "") {
@@ -482,7 +499,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       </AlertModal>
       <Stack direction="horizontal" gap={3}>
         <div>
-          {selected && selected.kind && <h3>{selected.kind}</h3>}
+          {selected && selected.kind && <h3>{selected.kind === "note" ? "Notiz" : selected.kind}</h3>}
           {selected && selected.name && <h2>{selected.name}</h2>}
         </div>
         <Button
@@ -507,7 +524,117 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
           </svg>
         </Button>
       </Stack>
-      <Form
+      {isNoteNode ? (
+        <>
+          <div className="mb-3">
+            <BootstrapForm.Label>Notizinhalt</BootstrapForm.Label>
+            <MDEditor
+              value={formData.current?.noteText || ""}
+              onChange={(value) => handleNoteDataChange({ noteText: value || "" })}
+              preview="edit"
+              height={280}
+            />
+          </div>
+          <div className="mb-3">
+            <BootstrapForm.Label>Hintergrundfarbe</BootstrapForm.Label>
+            <div className="d-flex gap-2 align-items-center">
+              <BootstrapForm.Control
+                type="color"
+                value={formData.current?.layout?.bgColor || "#ffffff"}
+                onChange={(event) =>
+                  handleNoteDataChange({
+                    layout: { bgColor: event.target.value },
+                  })
+                }
+              />
+              <Button
+                type="button"
+                variant="outline-secondary"
+                onClick={() => handleNoteDataChange({ layout: { bgColor: "" } })}
+              >
+                Transparent
+              </Button>
+            </div>
+          </div>
+          <BootstrapForm.Group className="mb-3">
+            <BootstrapForm.Label>Rahmenfarbe</BootstrapForm.Label>
+            <BootstrapForm.Control
+              type="color"
+              value={formData.current?.layout?.borderColor || "#6c757d"}
+              onChange={(event) =>
+                handleNoteDataChange({
+                  layout: { borderColor: event.target.value },
+                })
+              }
+            />
+          </BootstrapForm.Group>
+          <BootstrapForm.Group className="mb-3">
+            <BootstrapForm.Label>
+              Rahmenstärke: {formData.current?.layout?.borderWidth || 0}px
+            </BootstrapForm.Label>
+            <BootstrapForm.Range
+              min={0}
+              max={12}
+              step={1}
+              value={formData.current?.layout?.borderWidth || 0}
+              onChange={(event) =>
+                handleNoteDataChange({
+                  layout: { borderWidth: Number(event.target.value) },
+                })
+              }
+            />
+          </BootstrapForm.Group>
+          <BootstrapForm.Group className="mb-3">
+            <BootstrapForm.Label>
+              Borderradius: {formData.current?.layout?.borderRadius || 0}px
+            </BootstrapForm.Label>
+            <BootstrapForm.Range
+              min={0}
+              max={48}
+              step={1}
+              value={formData.current?.layout?.borderRadius || 0}
+              onChange={(event) =>
+                handleNoteDataChange({
+                  layout: { borderRadius: Number(event.target.value) },
+                })
+              }
+            />
+          </BootstrapForm.Group>
+          <BootstrapForm.Group className="mb-3">
+            <BootstrapForm.Label>
+              Breite: {formData.current?.layout?.nodeWidth || 224}px
+            </BootstrapForm.Label>
+            <BootstrapForm.Range
+              min={160}
+              max={480}
+              step={1}
+              value={formData.current?.layout?.nodeWidth || 224}
+              onChange={(event) =>
+                handleNoteDataChange({
+                  layout: { nodeWidth: Number(event.target.value) },
+                })
+              }
+            />
+          </BootstrapForm.Group>
+          <BootstrapForm.Group className="mb-3">
+            <BootstrapForm.Label>
+              Mindesthöhe: {formData.current?.layout?.nodeMinHeight || 0}px
+            </BootstrapForm.Label>
+            <BootstrapForm.Range
+              min={0}
+              max={640}
+              step={1}
+              value={formData.current?.layout?.nodeMinHeight || 0}
+              onChange={(event) =>
+                handleNoteDataChange({
+                  layout: { nodeMinHeight: Number(event.target.value) },
+                })
+              }
+            />
+          </BootstrapForm.Group>
+        </>
+      ) : (
+      <SchemaForm
         schema={schema}
         uiSchema={uiSchema}
         formData={formData}
@@ -522,9 +649,10 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         validate={customValidate}
       >
         <br />
-      </Form>
+      </SchemaForm>
+      )}
       <Stack direction="horizontal" gap={3}>
-        {!isFreeLayout && (
+        {!isNoteNode && !isFreeLayout && (
           <Button type="button" variant="outline-success" onClick={addSiblingNode}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -542,6 +670,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
             Neue Nebenorganisation
           </Button>
         )}
+        {!isNoteNode && (
         <Button type="button" variant="outline-success" onClick={addChildNode}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -558,6 +687,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
           </svg>
           {isFreeLayout ? "Node Hinzufügen" : "Neue Suborganisation"}
         </Button>
+        )}
       </Stack>
     </div>
   );
