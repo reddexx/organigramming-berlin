@@ -180,6 +180,27 @@ const ChartContainer = forwardRef(
       }
     }, [update, data, paperSize]);
 
+    useEffect(() => {
+      if ((data?.organisations || []).length > 0) {
+        return undefined;
+      }
+
+      setChartTransform("");
+
+      const timer = setTimeout(() => {
+        resetViewHandler();
+      }, 50);
+
+      return () => {
+        clearTimeout(timer);
+      };
+    }, [
+      data?.organisations,
+      data?.document?.layoutMode,
+      data?.document?.paperSize,
+      data?.document?.paperOrientation,
+    ]);
+
     const changeHierarchy = async (draggedItemData, dropTargetId) => {
       const dsDigger = createDigger();
       await dsDigger.removeNode(draggedItemData.id);
