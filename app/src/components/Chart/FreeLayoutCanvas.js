@@ -1309,8 +1309,8 @@ const FreeLayoutCanvas = ({
     }
 
     return {
-      minX: Math.min(...positions.map((position) => position.left)),
-      minY: Math.min(...positions.map((position) => position.top)),
+      minX: Math.min(0, ...positions.map((position) => position.left)),
+      minY: Math.min(0, ...positions.map((position) => position.top)),
       maxX: Math.max(...positions.map((position) => position.right)),
       maxY: Math.max(...positions.map((position) => position.bottom)),
     };
