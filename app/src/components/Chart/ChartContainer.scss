@@ -276,6 +276,36 @@
       max-height: 100%;
       min-height: 0;
       display: block;
+
+      .empty-chart-state {
+        min-width: 100%;
+        min-height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+
+        .empty-chart-card {
+          max-width: 28rem;
+          padding: 2rem;
+          border: 1px dashed rgba($gray-600, 0.4);
+          border-radius: $border-radius-lg;
+          background: rgba($white, 0.85);
+          box-shadow: rgba($gray-700, 0.08) 0 8px 24px;
+          text-align: center;
+
+          h2 {
+            margin-bottom: 0.75rem;
+            font-size: 1.5rem;
+          }
+
+          p {
+            margin-bottom: 1rem;
+            color: $gray-700;
+          }
+        }
+      }
+
       .chart {
         position: relative;
         transition: transform 150ms ease-out;

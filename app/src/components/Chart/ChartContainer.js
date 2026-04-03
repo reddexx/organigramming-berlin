@@ -116,7 +116,6 @@ const ChartContainer = forwardRef(
     const [dragging, setDragging] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [sizeWarning, setSizeWarning] = useState(false);
-    const [paperSize, setPaperSize] = useState("");
 
     const node = useMemo(
       () => ({
@@ -128,6 +127,7 @@ const ChartContainer = forwardRef(
       [data.organisations]
     );
     const isFreeLayout = data?.document?.layoutMode === "free";
+    const isEmptyTreeChart = !isFreeLayout && (node.organisations || []).length === 0;
     const customFontFaceCss = buildCustomFontFaceCss(data?.settings?.customFonts || []);
 
     const createDigger = () => {
@@ -174,11 +174,39 @@ const ChartContainer = forwardRef(
         updateChartHandler();
       }, 50);
 
-      if (paperSize && paperSize !== data.document.paperSize) {
-        setPaperSize(data.document.paperSize);
-        resetViewHandler();
+    }, [update, data]);
+
+    const resetViewWhenReady = (attempt = 0) => {
+      if (!chart.current) {
+        return;
       }
-    }, [update, data, paperSize]);
+
+      const paperElement = chart.current.querySelector("#paper");
+      const containerWidth = chart.current.clientWidth;
+      const containerHeight = chart.current.clientHeight;
+      const paperWidth = paperElement?.clientWidth || 0;
+      const paperHeight = paperElement?.clientHeight || 0;
+
+      if (containerWidth && containerHeight && paperWidth && paperHeight) {
+        resetViewHandler();
+        return;
+      }
+
+      if (attempt < 8) {
+        setTimeout(() => {
+          resetViewWhenReady(attempt + 1);
+        }, 50);
+      }
+    };
+
+    useEffect(() => {
+      setChartTransform("");
+      resetViewWhenReady();
+    }, [
+      data?.document?.paperSize,
+      data?.document?.paperOrientation,
+      data?.document?.layoutMode,
+    ]);
 
     useEffect(() => {
       if ((data?.organisations || []).length > 0) {
@@ -188,7 +216,7 @@ const ChartContainer = forwardRef(
       setChartTransform("");
 
       const timer = setTimeout(() => {
-        resetViewHandler();
+        resetViewWhenReady();
       }, 50);
 
       return () => {
@@ -872,6 +900,21 @@ const ChartContainer = forwardRef(
                       onPasteNodeAtPosition={onPasteNodeAtPosition}
                       canPasteAtPosition={canPasteAtPosition}
                     />
+                  ) : isEmptyTreeChart ? (
+                    <div className="empty-chart-state">
+                      <div className="empty-chart-card">
+                        <h2>Neues Organigramm</h2>
+                        <p>
+                          Dieses Dokument ist noch leer. Legen Sie die erste Organisation an,
+                          um das Organigramm zu starten.
+                        </p>
+                        {contentEditable && (
+                          <Button type="button" variant="success" onClick={() => onAddInitNode()}>
+                            Neue Organisation anlegen
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   ) : (
                     <ul>
                       <ChartNode
