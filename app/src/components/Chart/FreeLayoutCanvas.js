@@ -63,9 +63,9 @@ const normalizeConnectorLineStyle = (lineStyle) =>
 const getConnectorDashArray = (lineStyle) => {
   switch (normalizeConnectorLineStyle(lineStyle)) {
     case "dashed":
-      return "8 6";
+      return "14,8";
     case "dotted":
-      return "2 6";
+      return "1,10";
     default:
       return undefined;
   }
@@ -77,6 +77,16 @@ const getConnectorLineStyleClass = (lineStyle) => {
 
 const getConnectorLineCap = (lineStyle) => {
   return normalizeConnectorLineStyle(lineStyle) === "dashed" ? "butt" : "round";
+};
+
+const getConnectorRenderKey = (connector, appearance) => {
+  return [
+    connector.id,
+    normalizeConnectorLineStyle(appearance.lineStyle),
+    appearance.color || DEFAULT_CONNECTOR_COLOR,
+    appearance.sourceArrow ? "source-arrow" : "no-source-arrow",
+    appearance.targetArrow ? "target-arrow" : "no-target-arrow",
+  ].join(":");
 };
 
 const getConnectorAppearance = (connector) => {
@@ -2521,7 +2531,7 @@ const FreeLayoutCanvas = ({
 
             return (
               <g
-                key={connector.id}
+                key={getConnectorRenderKey(connector, appearance)}
                 className="connector-group"
                 onMouseEnter={() => showConnectorActions(connector.id)}
                 onMouseLeave={() => hideConnectorActions(connector.id)}
