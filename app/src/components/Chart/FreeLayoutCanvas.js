@@ -65,6 +65,14 @@ const getConnectorDashArray = (lineStyle) => {
   }
 };
 
+const getConnectorLineStyleClass = (lineStyle) => {
+  if (lineStyle === "dashed" || lineStyle === "dotted") {
+    return lineStyle;
+  }
+
+  return "solid";
+};
+
 const getConnectorAppearance = (connector) => {
   if (connector.type === "free") {
     return {
@@ -1229,6 +1237,7 @@ const FreeLayoutCanvas = ({
   const suppressClickRef = useRef(false);
   const nodeRectsRef = useRef({});
   const connectorDragStateRef = useRef(null);
+  const hoveredConnectorTimeoutRef = useRef(null);
 
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [nodeRects, setNodeRects] = useState({});
@@ -2085,6 +2094,34 @@ const FreeLayoutCanvas = ({
     setCanvasContextMenu(null);
   };
 
+  const showConnectorActions = useCallback((connectorId) => {
+    if (hoveredConnectorTimeoutRef.current) {
+      window.clearTimeout(hoveredConnectorTimeoutRef.current);
+      hoveredConnectorTimeoutRef.current = null;
+    }
+
+    setHoveredConnectorId(connectorId);
+  }, []);
+
+  const hideConnectorActions = useCallback((connectorId) => {
+    if (hoveredConnectorTimeoutRef.current) {
+      window.clearTimeout(hoveredConnectorTimeoutRef.current);
+    }
+
+    hoveredConnectorTimeoutRef.current = window.setTimeout(() => {
+      setHoveredConnectorId((current) => (current === connectorId ? null : current));
+      hoveredConnectorTimeoutRef.current = null;
+    }, 220);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hoveredConnectorTimeoutRef.current) {
+        window.clearTimeout(hoveredConnectorTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleCanvasContextMenu = (event) => {
     if (!contentEditable) {
       return;
@@ -2107,8 +2144,6 @@ const FreeLayoutCanvas = ({
     setHoveredConnectorId(null);
     setHoveredResizeNodeId(null);
     setCanvasContextMenu({
-      screenX: event.clientX,
-      screenY: event.clientY,
       pointer: getCanvasPointer(event.clientX, event.clientY),
     });
   };
@@ -2477,18 +2512,21 @@ const FreeLayoutCanvas = ({
           <g
             key={connector.id}
             className="connector-group"
-            onMouseEnter={() => setHoveredConnectorId(connector.id)}
-            onMouseLeave={() => setHoveredConnectorId((current) => current === connector.id ? null : current)}
+            onMouseEnter={() => showConnectorActions(connector.id)}
+            onMouseLeave={() => hideConnectorActions(connector.id)}
           >
             <path
               className={`connector-hit-area ${connector.manual ? "manual" : "auto"}${
                 connector.pending ? " pending" : ""
               }`}
               d={connector.d}
+              onMouseEnter={() => showConnectorActions(connector.id)}
               onMouseDown={(e) => handleConnectorMouseDown(e, connector)}
             />
             <path
-              className={`${connector.manual ? "manual" : "auto"}${
+              className={`connector-line ${getConnectorLineStyleClass(
+                getConnectorAppearance(connector).lineStyle
+              )} ${connector.manual ? "manual" : "auto"}${
                 connector.pending ? " pending" : ""
               }`}
               d={connector.d}
@@ -2508,17 +2546,21 @@ const FreeLayoutCanvas = ({
                 <g
                   className="connector-edit-button"
                   transform={`translate(${connector.actionX - 15}, ${connector.actionY})`}
+                  onMouseEnter={() => showConnectorActions(connector.id)}
+                  onMouseLeave={() => hideConnectorActions(connector.id)}
                   onMouseDown={(event) => handleConnectorEditOpen(event, connector)}
                 >
-                  <circle r="11" />
+                  <circle r="12" />
                   <path d="M -3 3 L 3 -3 M -1 -4 L 4 1 M -4 4 L -1 1" />
                 </g>
                 <g
                   className="connector-remove-button"
                   transform={`translate(${connector.actionX + 15}, ${connector.actionY})`}
+                  onMouseEnter={() => showConnectorActions(connector.id)}
+                  onMouseLeave={() => hideConnectorActions(connector.id)}
                   onMouseDown={(event) => handleConnectorRemove(event, connector)}
                 >
-                  <circle r="11" />
+                  <circle r="12" />
                   <path d="M -4 -4 L 4 4 M 4 -4 L -4 4" />
                 </g>
               </>
@@ -2576,8 +2618,8 @@ const FreeLayoutCanvas = ({
         <div
           className="free-layout-node-menu free-layout-canvas-menu"
           style={{
-            left: `${canvasContextMenu.screenX}px`,
-            top: `${canvasContextMenu.screenY}px`,
+            left: `${canvasContextMenu.pointer.x}px`,
+            top: `${canvasContextMenu.pointer.y}px`,
             transform: "translate(0, 0)",
           }}
           onMouseDown={(event) => event.stopPropagation()}
