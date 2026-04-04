@@ -51,11 +51,17 @@ const MIN_NODE_HEIGHT = 0;
 const MAX_NODE_HEIGHT = 640;
 const DEFAULT_CONNECTOR_COLOR = "#6c757d";
 const DEFAULT_CONNECTOR_LINE_STYLE = "solid";
+const CONNECTOR_LINE_STYLES = ["solid", "dashed", "dotted"];
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
+const normalizeConnectorLineStyle = (lineStyle) =>
+  CONNECTOR_LINE_STYLES.includes(lineStyle)
+    ? lineStyle
+    : DEFAULT_CONNECTOR_LINE_STYLE;
+
 const getConnectorDashArray = (lineStyle) => {
-  switch (lineStyle) {
+  switch (normalizeConnectorLineStyle(lineStyle)) {
     case "dashed":
       return "8 6";
     case "dotted":
@@ -66,18 +72,14 @@ const getConnectorDashArray = (lineStyle) => {
 };
 
 const getConnectorLineStyleClass = (lineStyle) => {
-  if (lineStyle === "dashed" || lineStyle === "dotted") {
-    return lineStyle;
-  }
-
-  return "solid";
+  return normalizeConnectorLineStyle(lineStyle);
 };
 
 const getConnectorAppearance = (connector) => {
   if (connector.type === "free") {
     return {
       color: connector.color || DEFAULT_CONNECTOR_COLOR,
-      lineStyle: connector.lineStyle || DEFAULT_CONNECTOR_LINE_STYLE,
+      lineStyle: normalizeConnectorLineStyle(connector.lineStyle),
       sourceArrow: connector.sourceArrow === true,
       targetArrow: connector.targetArrow === true,
     };
@@ -85,7 +87,7 @@ const getConnectorAppearance = (connector) => {
 
   return {
     color: connector.color || DEFAULT_CONNECTOR_COLOR,
-    lineStyle: connector.lineStyle || DEFAULT_CONNECTOR_LINE_STYLE,
+    lineStyle: normalizeConnectorLineStyle(connector.lineStyle),
     sourceArrow: connector.sourceArrow === true,
     targetArrow: connector.targetArrow === true,
   };
@@ -2181,7 +2183,7 @@ const FreeLayoutCanvas = ({
     setConnectorEditorValues({
       sourceArrow: appearance.sourceArrow,
       targetArrow: appearance.targetArrow,
-      lineStyle: appearance.lineStyle,
+      lineStyle: normalizeConnectorLineStyle(appearance.lineStyle),
       color: appearance.color,
     });
   };
@@ -2192,10 +2194,11 @@ const FreeLayoutCanvas = ({
     }
 
     const editingConnectorId = editingConnector.id;
+    const nextLineStyle = normalizeConnectorLineStyle(connectorEditorValues.lineStyle);
     const nextAppearance = {
       sourceArrow: connectorEditorValues.sourceArrow,
       targetArrow: connectorEditorValues.targetArrow,
-      lineStyle: connectorEditorValues.lineStyle,
+      lineStyle: nextLineStyle,
       color: connectorEditorValues.color,
     };
 
@@ -2212,7 +2215,7 @@ const FreeLayoutCanvas = ({
                 ...connection,
                 sourceArrow: connectorEditorValues.sourceArrow,
                 targetArrow: connectorEditorValues.targetArrow,
-                lineStyle: connectorEditorValues.lineStyle,
+                lineStyle: nextLineStyle,
                 color: connectorEditorValues.color,
               }
             : connection
@@ -2222,7 +2225,7 @@ const FreeLayoutCanvas = ({
       await onUpdateNodeLayout(editingConnector.childNodeId, {
         connectorParentArrow: connectorEditorValues.sourceArrow,
         connectorChildArrow: connectorEditorValues.targetArrow,
-        connectorLineStyle: connectorEditorValues.lineStyle,
+        connectorLineStyle: nextLineStyle,
         connectorColor: connectorEditorValues.color,
       });
     }
@@ -2676,11 +2679,11 @@ const FreeLayoutCanvas = ({
             <Form.Group className="mb-3">
               <Form.Label>Linienart</Form.Label>
               <Form.Select
-                value={connectorEditorValues.lineStyle}
+                value={normalizeConnectorLineStyle(connectorEditorValues.lineStyle)}
                 onChange={(event) =>
                   setConnectorEditorValues((current) => ({
                     ...current,
-                    lineStyle: event.target.value,
+                    lineStyle: normalizeConnectorLineStyle(event.currentTarget.value),
                   }))
                 }
               >
