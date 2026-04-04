@@ -1249,6 +1249,7 @@ const FreeLayoutCanvas = ({
     lineStyle: DEFAULT_CONNECTOR_LINE_STYLE,
     color: DEFAULT_CONNECTOR_COLOR,
   });
+  const [connectorAppearanceOverrides, setConnectorAppearanceOverrides] = useState({});
 
   const flattenedNodes = useMemo(() => flattenNodes(nodes), [nodes]);
   const autoPositions = useMemo(() => buildAutoPositions(nodes), [nodes]);
@@ -1797,6 +1798,7 @@ const FreeLayoutCanvas = ({
     ]),
   ]);
   const hierarchyConnectors = hierarchyConnectorConfigs.map((connector) => {
+    const appearanceOverride = connectorAppearanceOverrides[connector.id] || null;
     const startBundlePoint = shouldBundleNodeSide(
       connectorEndpointLayout.endpointGroups,
       connector.parentNodeId,
@@ -1857,22 +1859,31 @@ const FreeLayoutCanvas = ({
       pending: Boolean(isPendingConnector),
       actionX: connectorPath.midpoint.x,
       actionY: connectorPath.midpoint.y,
-        color: connector.childNodeId
+      color:
+        appearanceOverride?.color ||
+        (connector.childNodeId
           ? nodeMetaById[connector.childNodeId]?.node?.layout?.connectorColor
-          : undefined,
-        lineStyle: connector.childNodeId
+          : undefined),
+      lineStyle:
+        appearanceOverride?.lineStyle ||
+        (connector.childNodeId
           ? nodeMetaById[connector.childNodeId]?.node?.layout?.connectorLineStyle
-          : undefined,
-        sourceArrow: connector.childNodeId
+          : undefined),
+      sourceArrow:
+        appearanceOverride?.sourceArrow ??
+        (connector.childNodeId
           ? nodeMetaById[connector.childNodeId]?.node?.layout?.connectorParentArrow
-          : undefined,
-        targetArrow: connector.childNodeId
+          : undefined),
+      targetArrow:
+        appearanceOverride?.targetArrow ??
+        (connector.childNodeId
           ? nodeMetaById[connector.childNodeId]?.node?.layout?.connectorChildArrow
-          : undefined,
+          : undefined),
     };
   });
   const freeLayoutConnectors = freeLayoutConnectorConfigs
     .map((connector) => {
+      const appearanceOverride = connectorAppearanceOverrides[connector.id] || null;
       const startBundlePoint = shouldBundleNodeSide(
         connectorEndpointLayout.endpointGroups,
         connector.sourceNodeId,
@@ -1941,10 +1952,10 @@ const FreeLayoutCanvas = ({
         pending: Boolean(isPendingConnector),
         actionX: connectorPath.midpoint.x,
         actionY: connectorPath.midpoint.y,
-        color: connector.color,
-        lineStyle: connector.lineStyle,
-        sourceArrow: connector.sourceArrow,
-        targetArrow: connector.targetArrow,
+        color: appearanceOverride?.color || connector.color,
+        lineStyle: appearanceOverride?.lineStyle || connector.lineStyle,
+        sourceArrow: appearanceOverride?.sourceArrow ?? connector.sourceArrow,
+        targetArrow: appearanceOverride?.targetArrow ?? connector.targetArrow,
       };
     })
     .filter(Boolean);
@@ -2144,6 +2155,19 @@ const FreeLayoutCanvas = ({
     if (!editingConnector) {
       return;
     }
+
+    const editingConnectorId = editingConnector.id;
+    const nextAppearance = {
+      sourceArrow: connectorEditorValues.sourceArrow,
+      targetArrow: connectorEditorValues.targetArrow,
+      lineStyle: connectorEditorValues.lineStyle,
+      color: connectorEditorValues.color,
+    };
+
+    setConnectorAppearanceOverrides((current) => ({
+      ...current,
+      [editingConnectorId]: nextAppearance,
+    }));
 
     if (editingConnector.type === "free") {
       await onUpdateFreeConnections((currentConnections) =>
