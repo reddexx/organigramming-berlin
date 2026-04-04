@@ -75,6 +75,10 @@ const getConnectorLineStyleClass = (lineStyle) => {
   return normalizeConnectorLineStyle(lineStyle);
 };
 
+const getConnectorLineCap = (lineStyle) => {
+  return normalizeConnectorLineStyle(lineStyle) === "dashed" ? "butt" : "round";
+};
+
 const getConnectorAppearance = (connector) => {
   if (connector.type === "free") {
     return {
@@ -2512,38 +2516,36 @@ const FreeLayoutCanvas = ({
           </marker>
         </defs>
         {connectors.map((connector) => (
-          <g
-            key={connector.id}
-            className="connector-group"
-            onMouseEnter={() => showConnectorActions(connector.id)}
-            onMouseLeave={() => hideConnectorActions(connector.id)}
-          >
-            <path
-              className={`connector-hit-area ${connector.manual ? "manual" : "auto"}${
-                connector.pending ? " pending" : ""
-              }`}
-              d={connector.d}
-              onMouseEnter={() => showConnectorActions(connector.id)}
-              onMouseDown={(e) => handleConnectorMouseDown(e, connector)}
-            />
-            <path
-              className={`connector-line ${getConnectorLineStyleClass(
-                getConnectorAppearance(connector).lineStyle
-              )} ${connector.manual ? "manual" : "auto"}${
-                connector.pending ? " pending" : ""
-              }`}
-              d={connector.d}
-              style={{
-                stroke: getConnectorAppearance(connector).color,
-                strokeDasharray: getConnectorDashArray(getConnectorAppearance(connector).lineStyle),
-              }}
-              markerStart={
-                getConnectorAppearance(connector).sourceArrow ? "url(#connector-arrowhead)" : undefined
-              }
-              markerEnd={
-                getConnectorAppearance(connector).targetArrow ? "url(#connector-arrowhead)" : undefined
-              }
-            />
+          (() => {
+            const appearance = getConnectorAppearance(connector);
+
+            return (
+              <g
+                key={connector.id}
+                className="connector-group"
+                onMouseEnter={() => showConnectorActions(connector.id)}
+                onMouseLeave={() => hideConnectorActions(connector.id)}
+              >
+                <path
+                  className={`connector-hit-area ${connector.manual ? "manual" : "auto"}${
+                    connector.pending ? " pending" : ""
+                  }`}
+                  d={connector.d}
+                  onMouseEnter={() => showConnectorActions(connector.id)}
+                  onMouseDown={(e) => handleConnectorMouseDown(e, connector)}
+                />
+                <path
+                  className={`connector-line ${getConnectorLineStyleClass(appearance.lineStyle)} ${
+                    connector.manual ? "manual" : "auto"
+                  }${connector.pending ? " pending" : ""}`}
+                  d={connector.d}
+                  stroke={appearance.color}
+                  strokeDasharray={getConnectorDashArray(appearance.lineStyle)}
+                  strokeLinecap={getConnectorLineCap(appearance.lineStyle)}
+                  markerStart={appearance.sourceArrow ? "url(#connector-arrowhead)" : undefined}
+                  markerEnd={appearance.targetArrow ? "url(#connector-arrowhead)" : undefined}
+                />
+            
             {hoveredConnectorId === connector.id && contentEditable && (
               <>
                 <g
@@ -2568,7 +2570,9 @@ const FreeLayoutCanvas = ({
                 </g>
               </>
             )}
-          </g>
+              </g>
+            );
+          })()
         ))}
         {dragGuides.map((guide) =>
           guide.orientation === "vertical" ? (
