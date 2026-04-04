@@ -11,11 +11,42 @@ const NewDocumetModal = (props) => {
   const [hideModal, setHideModal] = useState(false);
   const [importError, setImportError] = useState(null);
   const [importData, setImportData] = useState(null);
+  const [useFlexibleMode, setUseFlexibleMode] = useState(false);
+
+  const applyNewDocumentOptions = (documentData) => {
+    if (!useFlexibleMode) {
+      return documentData;
+    }
+
+    return {
+      ...documentData,
+      document: {
+        ...(documentData.document || {}),
+        layoutMode: "free",
+      },
+    };
+  };
+
+  const continueWithImportedDocument = () => {
+    props.sendDataUp(importData);
+    setAlertModalShow(false);
+    props.onHide();
+  };
+
+  const saveCurrentAndContinue = async () => {
+    if (typeof props.onSaveCurrentDocument === "function") {
+      await props.onSaveCurrentDocument(true);
+    }
+
+    continueWithImportedDocument();
+  };
 
   const onCreateNew = () => {
     setHideModal(true);
     setAlertModalShow(true);
-    const newInitDocument = upgradeDataStructure(emptyDocument);
+    const newInitDocument = applyNewDocumentOptions(
+      upgradeDataStructure(emptyDocument)
+    );
     setImportData(newInitDocument);
   };
 
@@ -64,17 +95,13 @@ const NewDocumetModal = (props) => {
   return (
     <>
       <AlertModal
-        onOkay={() => {
-          props.sendDataUp(importData);
-          setAlertModalShow(false);
-          props.onHide();
-        }}
+        onOkay={continueWithImportedDocument}
         show={alertModalShow}
         onHide={() => {
           setHideModal(false);
           setAlertModalShow(false);
         }}
-        onSave={props.openExport}
+        onSave={saveCurrentAndContinue}
         title="Aktuelles Dokument verwerfen"
       >
         Wenn Sie ein neues Dokument öffnen, gehen ungespeicherte Änderungen an
@@ -96,6 +123,14 @@ const NewDocumetModal = (props) => {
             <Row>
               <Col className="mb-3">
                 <Button onClick={onCreateNew}>Neues Dokument erstellen</Button>
+                <Form.Check
+                  className="mt-3"
+                  id="new-document-flex-mode"
+                  type="checkbox"
+                  label="Im Flexiblen-Modus erstellen"
+                  checked={useFlexibleMode}
+                  onChange={(event) => setUseFlexibleMode(event.target.checked)}
+                />
               </Col>
             </Row>
             <Row>

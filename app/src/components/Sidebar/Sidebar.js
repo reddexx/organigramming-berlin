@@ -107,6 +107,7 @@ const Sidebar = forwardRef(
             openExport={() => {
               setExportModalShow(true);
             }}
+            onSaveCurrentDocument={onSave}
             sendDataUp={onChange}
           />
         )}

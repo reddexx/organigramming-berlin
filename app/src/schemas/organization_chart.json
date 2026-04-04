@@ -144,6 +144,23 @@
               "targetAnchor": {
                 "type": "string",
                 "enum": ["top", "right", "bottom", "left"]
+              },
+              "color": {
+                "type": "string",
+                "default": "#6c757d"
+              },
+              "lineStyle": {
+                "type": "string",
+                "default": "solid",
+                "enum": ["solid", "dashed", "dotted"]
+              },
+              "sourceArrow": {
+                "type": "boolean",
+                "default": false
+              },
+              "targetArrow": {
+                "type": "boolean",
+                "default": false
               }
             },
             "required": ["id", "sourceNodeId", "targetNodeId", "sourceAnchor", "targetAnchor"]
@@ -489,6 +506,28 @@
             },
             "connectorHidden": {
               "title": "Connector ausgeblendet",
+              "type": "boolean",
+              "default": false
+            },
+            "connectorColor": {
+              "title": "Connector Farbe",
+              "type": "string",
+              "default": "#6c757d"
+            },
+            "connectorLineStyle": {
+              "title": "Connector Linienart",
+              "type": "string",
+              "default": "solid",
+              "enum": ["solid", "dashed", "dotted"],
+              "enumNames": ["Durchgezogen", "Gestrichelt", "Gepunktet"]
+            },
+            "connectorParentArrow": {
+              "title": "Pfeil an Quelle anzeigen",
+              "type": "boolean",
+              "default": false
+            },
+            "connectorChildArrow": {
+              "title": "Pfeil an Ziel anzeigen",
               "type": "boolean",
               "default": false
             },

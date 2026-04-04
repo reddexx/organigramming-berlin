@@ -3,24 +3,40 @@ import getURI from "./getURI";
 import { sanitizeCustomFonts } from "./customFonts";
 
 const CONNECTOR_ANCHOR_SIDES = ["top", "right", "bottom", "left"];
+const CONNECTOR_LINE_STYLES = ["solid", "dashed", "dotted"];
+const DEFAULT_CONNECTOR_COLOR = "#6c757d";
+const DEFAULT_CONNECTOR_LINE_STYLE = "solid";
 
 function sanitizeFreeConnections(document = {}, validNodeIds = new Set()) {
   const freeConnections = Array.isArray(document.freeConnections)
     ? document.freeConnections
     : [];
 
-  document.freeConnections = freeConnections.filter((connection) => {
-    return Boolean(
-      connection?.id &&
-        connection?.sourceNodeId &&
-        connection?.targetNodeId &&
-        connection.sourceNodeId !== connection.targetNodeId &&
-        validNodeIds.has(connection.sourceNodeId) &&
-        validNodeIds.has(connection.targetNodeId) &&
-        CONNECTOR_ANCHOR_SIDES.includes(connection.sourceAnchor) &&
-        CONNECTOR_ANCHOR_SIDES.includes(connection.targetAnchor)
-    );
-  });
+  document.freeConnections = freeConnections
+    .filter((connection) => {
+      return Boolean(
+        connection?.id &&
+          connection?.sourceNodeId &&
+          connection?.targetNodeId &&
+          connection.sourceNodeId !== connection.targetNodeId &&
+          validNodeIds.has(connection.sourceNodeId) &&
+          validNodeIds.has(connection.targetNodeId) &&
+          CONNECTOR_ANCHOR_SIDES.includes(connection.sourceAnchor) &&
+          CONNECTOR_ANCHOR_SIDES.includes(connection.targetAnchor)
+      );
+    })
+    .map((connection) => ({
+      ...connection,
+      color:
+        typeof connection.color === "string" && connection.color
+          ? connection.color
+          : DEFAULT_CONNECTOR_COLOR,
+      lineStyle: CONNECTOR_LINE_STYLES.includes(connection.lineStyle)
+        ? connection.lineStyle
+        : DEFAULT_CONNECTOR_LINE_STYLE,
+      sourceArrow: connection.sourceArrow === true,
+      targetArrow: connection.targetArrow === true,
+    }));
 }
 
 function collectOrganisationIds(data, ids = new Set()) {
@@ -197,6 +213,22 @@ function addNewPropsToOrgs(data) {
 
     if (typeof org.layout.connectorHidden !== "boolean") {
       org.layout.connectorHidden = false;
+    }
+
+    if (typeof org.layout.connectorColor !== "string" || !org.layout.connectorColor) {
+      org.layout.connectorColor = DEFAULT_CONNECTOR_COLOR;
+    }
+
+    if (!CONNECTOR_LINE_STYLES.includes(org.layout.connectorLineStyle)) {
+      org.layout.connectorLineStyle = DEFAULT_CONNECTOR_LINE_STYLE;
+    }
+
+    if (typeof org.layout.connectorParentArrow !== "boolean") {
+      org.layout.connectorParentArrow = false;
+    }
+
+    if (typeof org.layout.connectorChildArrow !== "boolean") {
+      org.layout.connectorChildArrow = false;
     }
 
     if (!org?.background && !org?.layout) {
