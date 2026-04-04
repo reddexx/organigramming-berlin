@@ -1,4 +1,4 @@
-name: Build and publish Docker image
+name: Build and publish Docker image to GHCR
 
 on:
   push:
@@ -37,8 +37,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
           build-args: |
             REPO=${{ github.server_url }}/${{ github.repository }}
             BRANCH=${{ github.ref_name }}
