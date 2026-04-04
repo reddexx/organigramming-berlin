@@ -19,24 +19,15 @@
   cursor: default;
 
   .navigation-container {
-            stroke-width: 2;
-          }
-
-          path {
-            stroke: $white;
-            stroke-width: 2.25;
-            stroke-linecap: round;
-          }
-        }
-
-        .connector-edit-button {
-          pointer-events: all;
-          cursor: pointer;
-
-          circle {
-            fill: $primary;
-            stroke: $white;
     position: fixed;
+    bottom: 0.25rem;
+    right: 0.25rem;
+    z-index: 1000;
+  }
+
+  .editor {
+    box-sizing: border-box;
+    display: block;
     text-align: center;
     transition-delay: 0;
     transition-duration: 200ms;
@@ -44,6 +35,16 @@
     transition-timing-function: ease-out;
     overflow: visable;
     padding: 0;
+    flex: 1 0 auto;
+  }
+
+  .paper {
+    cursor: -webkit-grab;
+    cursor: grab;
+
+    padding: 1rem;
+    background-size: 1rem 1rem;
+    background-image: radial-gradient($gray-600 0.01rem, $gray-100 1px);
     box-shadow: rgba($gray-700, 0.2) 0px 1px 2px;
 
     display: flex;
