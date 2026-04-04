@@ -1339,11 +1339,11 @@ const FreeLayoutCanvas = ({
   }, [contentBounds]);
 
   const canvasOffset = useMemo(() => {
-    const x = Math.round((canvasSize.width - canvasSize.contentWidth) / 2) - contentBounds.minX;
-    const y = Math.round((canvasSize.height - canvasSize.contentHeight) / 2) - contentBounds.minY;
+    const x = CANVAS_PADDING - contentBounds.minX;
+    const y = CANVAS_PADDING - contentBounds.minY;
 
     return { x, y };
-  }, [canvasSize, contentBounds]);
+  }, [contentBounds]);
 
   const getDisplayPosition = useCallback(
     (node) => {
