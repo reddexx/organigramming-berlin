@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import { Button, Form, Modal } from "react-bootstrap";
+import { Button, ButtonGroup, Form, Modal } from "react-bootstrap";
 
 import { selectNodeService } from "../../services/service";
 import ChartNodeCard from "./ChartNodeCard";
@@ -2678,19 +2678,53 @@ const FreeLayoutCanvas = ({
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Linienart</Form.Label>
-              <Form.Select
-                value={normalizeConnectorLineStyle(connectorEditorValues.lineStyle)}
-                onChange={(event) =>
-                  setConnectorEditorValues((current) => ({
-                    ...current,
-                    lineStyle: normalizeConnectorLineStyle(event.currentTarget.value),
-                  }))
-                }
-              >
-                <option value="solid">Durchgezogen</option>
-                <option value="dashed">Gestrichelt</option>
-                <option value="dotted">Gepunktet</option>
-              </Form.Select>
+              <ButtonGroup className="w-100" aria-label="Linienart auswählen">
+                <Button
+                  variant={
+                    normalizeConnectorLineStyle(connectorEditorValues.lineStyle) === "solid"
+                      ? "primary"
+                      : "outline-primary"
+                  }
+                  onClick={() =>
+                    setConnectorEditorValues((current) => ({
+                      ...current,
+                      lineStyle: "solid",
+                    }))
+                  }
+                >
+                  Durchgezogen
+                </Button>
+                <Button
+                  variant={
+                    normalizeConnectorLineStyle(connectorEditorValues.lineStyle) === "dashed"
+                      ? "primary"
+                      : "outline-primary"
+                  }
+                  onClick={() =>
+                    setConnectorEditorValues((current) => ({
+                      ...current,
+                      lineStyle: "dashed",
+                    }))
+                  }
+                >
+                  Gestrichelt
+                </Button>
+                <Button
+                  variant={
+                    normalizeConnectorLineStyle(connectorEditorValues.lineStyle) === "dotted"
+                      ? "primary"
+                      : "outline-primary"
+                  }
+                  onClick={() =>
+                    setConnectorEditorValues((current) => ({
+                      ...current,
+                      lineStyle: "dotted",
+                    }))
+                  }
+                >
+                  Gepunktet
+                </Button>
+              </ButtonGroup>
             </Form.Group>
             <Form.Group>
               <Form.Label>Farbe</Form.Label>
