@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import { Button, ButtonGroup, Form, Modal } from "react-bootstrap";
+import { Button, Form, Modal } from "react-bootstrap";
 
 import { selectNodeService } from "../../services/service";
 import ChartNodeCard from "./ChartNodeCard";
@@ -50,39 +50,12 @@ const MAX_NODE_WIDTH = 480;
 const MIN_NODE_HEIGHT = 0;
 const MAX_NODE_HEIGHT = 640;
 const DEFAULT_CONNECTOR_COLOR = "#6c757d";
-const DEFAULT_CONNECTOR_LINE_STYLE = "solid";
-const CONNECTOR_LINE_STYLES = ["solid", "dashed", "dotted"];
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
-const normalizeConnectorLineStyle = (lineStyle) =>
-  CONNECTOR_LINE_STYLES.includes(lineStyle)
-    ? lineStyle
-    : DEFAULT_CONNECTOR_LINE_STYLE;
-
-const getConnectorDashArray = (lineStyle) => {
-  switch (normalizeConnectorLineStyle(lineStyle)) {
-    case "dashed":
-      return "14,8";
-    case "dotted":
-      return "1,10";
-    default:
-      return undefined;
-  }
-};
-
-const getConnectorLineStyleClass = (lineStyle) => {
-  return normalizeConnectorLineStyle(lineStyle);
-};
-
-const getConnectorLineCap = (lineStyle) => {
-  return normalizeConnectorLineStyle(lineStyle) === "dashed" ? "butt" : "round";
-};
 
 const getConnectorRenderKey = (connector, appearance) => {
   return [
     connector.id,
-    normalizeConnectorLineStyle(appearance.lineStyle),
     appearance.color || DEFAULT_CONNECTOR_COLOR,
     appearance.sourceArrow ? "source-arrow" : "no-source-arrow",
     appearance.targetArrow ? "target-arrow" : "no-target-arrow",
@@ -93,7 +66,6 @@ const getConnectorAppearance = (connector) => {
   if (connector.type === "free") {
     return {
       color: connector.color || DEFAULT_CONNECTOR_COLOR,
-      lineStyle: normalizeConnectorLineStyle(connector.lineStyle),
       sourceArrow: connector.sourceArrow === true,
       targetArrow: connector.targetArrow === true,
     };
@@ -101,7 +73,6 @@ const getConnectorAppearance = (connector) => {
 
   return {
     color: connector.color || DEFAULT_CONNECTOR_COLOR,
-    lineStyle: normalizeConnectorLineStyle(connector.lineStyle),
     sourceArrow: connector.sourceArrow === true,
     targetArrow: connector.targetArrow === true,
   };
@@ -1271,7 +1242,6 @@ const FreeLayoutCanvas = ({
   const [connectorEditorValues, setConnectorEditorValues] = useState({
     sourceArrow: false,
     targetArrow: false,
-    lineStyle: DEFAULT_CONNECTOR_LINE_STYLE,
     color: DEFAULT_CONNECTOR_COLOR,
   });
   const [connectorAppearanceOverrides, setConnectorAppearanceOverrides] = useState({});
@@ -2197,7 +2167,6 @@ const FreeLayoutCanvas = ({
     setConnectorEditorValues({
       sourceArrow: appearance.sourceArrow,
       targetArrow: appearance.targetArrow,
-      lineStyle: normalizeConnectorLineStyle(appearance.lineStyle),
       color: appearance.color,
     });
   };
@@ -2208,11 +2177,9 @@ const FreeLayoutCanvas = ({
     }
 
     const editingConnectorId = editingConnector.id;
-    const nextLineStyle = normalizeConnectorLineStyle(connectorEditorValues.lineStyle);
     const nextAppearance = {
       sourceArrow: connectorEditorValues.sourceArrow,
       targetArrow: connectorEditorValues.targetArrow,
-      lineStyle: nextLineStyle,
       color: connectorEditorValues.color,
     };
 
@@ -2229,7 +2196,6 @@ const FreeLayoutCanvas = ({
                 ...connection,
                 sourceArrow: connectorEditorValues.sourceArrow,
                 targetArrow: connectorEditorValues.targetArrow,
-                lineStyle: nextLineStyle,
                 color: connectorEditorValues.color,
               }
             : connection
@@ -2239,7 +2205,6 @@ const FreeLayoutCanvas = ({
       await onUpdateNodeLayout(editingConnector.childNodeId, {
         connectorParentArrow: connectorEditorValues.sourceArrow,
         connectorChildArrow: connectorEditorValues.targetArrow,
-        connectorLineStyle: nextLineStyle,
         connectorColor: connectorEditorValues.color,
       });
     }
@@ -2545,13 +2510,12 @@ const FreeLayoutCanvas = ({
                   onMouseDown={(e) => handleConnectorMouseDown(e, connector)}
                 />
                 <path
-                  className={`connector-line ${getConnectorLineStyleClass(appearance.lineStyle)} ${
-                    connector.manual ? "manual" : "auto"
-                  }${connector.pending ? " pending" : ""}`}
+                  className={`connector-line ${connector.manual ? "manual" : "auto"}${
+                    connector.pending ? " pending" : ""
+                  }`}
                   d={connector.d}
                   stroke={appearance.color}
-                  strokeDasharray={getConnectorDashArray(appearance.lineStyle)}
-                  strokeLinecap={getConnectorLineCap(appearance.lineStyle)}
+                  strokeLinecap="round"
                   markerStart={appearance.sourceArrow ? "url(#connector-arrowhead)" : undefined}
                   markerEnd={appearance.targetArrow ? "url(#connector-arrowhead)" : undefined}
                 />
@@ -2689,56 +2653,6 @@ const FreeLayoutCanvas = ({
                   }))
                 }
               />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Linienart</Form.Label>
-              <ButtonGroup className="w-100" aria-label="Linienart auswählen">
-                <Button
-                  variant={
-                    normalizeConnectorLineStyle(connectorEditorValues.lineStyle) === "solid"
-                      ? "primary"
-                      : "outline-primary"
-                  }
-                  onClick={() =>
-                    setConnectorEditorValues((current) => ({
-                      ...current,
-                      lineStyle: "solid",
-                    }))
-                  }
-                >
-                  Durchgezogen
-                </Button>
-                <Button
-                  variant={
-                    normalizeConnectorLineStyle(connectorEditorValues.lineStyle) === "dashed"
-                      ? "primary"
-                      : "outline-primary"
-                  }
-                  onClick={() =>
-                    setConnectorEditorValues((current) => ({
-                      ...current,
-                      lineStyle: "dashed",
-                    }))
-                  }
-                >
-                  Gestrichelt
-                </Button>
-                <Button
-                  variant={
-                    normalizeConnectorLineStyle(connectorEditorValues.lineStyle) === "dotted"
-                      ? "primary"
-                      : "outline-primary"
-                  }
-                  onClick={() =>
-                    setConnectorEditorValues((current) => ({
-                      ...current,
-                      lineStyle: "dotted",
-                    }))
-                  }
-                >
-                  Gepunktet
-                </Button>
-              </ButtonGroup>
             </Form.Group>
             <Form.Group>
               <Form.Label>Farbe</Form.Label>
