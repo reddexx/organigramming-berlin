@@ -336,14 +336,16 @@
 
         path {
           fill: none;
-          stroke: $secondary;
-          stroke-width: 2;
           stroke-linecap: round;
           stroke-linejoin: round;
           pointer-events: none;
+        }
+
+        .connector-line {
+          stroke: $secondary;
+          stroke-width: 2;
 
           &.manual {
-            stroke: darken($secondary, 10%);
             stroke-width: 2.5;
           }
 
@@ -351,13 +353,6 @@
             stroke: $primary;
           }
 
-          &.preview {
-            stroke-dasharray: 8 6;
-            stroke-width: 2.5;
-          }
-        }
-
-        .connector-line {
           &.dashed {
             stroke-dasharray: 8 6;
           }
@@ -365,6 +360,12 @@
           &.dotted {
             stroke-dasharray: 2 6;
           }
+        }
+
+        .preview {
+          stroke: $primary;
+          stroke-dasharray: 8 6;
+          stroke-width: 2.5;
         }
 
         .connector-group {

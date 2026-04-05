@@ -2487,14 +2487,14 @@ const FreeLayoutCanvas = ({
         <defs>
           <marker
             id="connector-arrowhead"
-            markerWidth="10"
-            markerHeight="10"
-            refX="8"
-            refY="5"
+            markerWidth="8"
+            markerHeight="8"
+            refX="6.8"
+            refY="4"
             orient="auto-start-reverse"
-            markerUnits="strokeWidth"
+            markerUnits="userSpaceOnUse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" stroke="none" />
+            <path d="M 0 0 L 8 4 L 0 8 L 1.6 4 z" fill="context-stroke" stroke="none" />
           </marker>
         </defs>
         {connectors.map((connector) => (
