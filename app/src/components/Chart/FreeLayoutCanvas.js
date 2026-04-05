@@ -1221,6 +1221,7 @@ const FreeLayoutCanvas = ({
   const wrapperRef = useRef();
   const nodeRefs = useRef({});
   const dragMovedRef = useRef(false);
+  const draftPositionsRef = useRef({});
   const suppressClickRef = useRef(false);
   const nodeRectsRef = useRef({});
   const connectorDragStateRef = useRef(null);
@@ -1365,6 +1366,10 @@ const FreeLayoutCanvas = ({
   }, [nodeRects]);
 
   useEffect(() => {
+    draftPositionsRef.current = draftPositions;
+  }, [draftPositions]);
+
+  useEffect(() => {
     connectorDragStateRef.current = connectorDragState;
   }, [connectorDragState]);
 
@@ -1430,14 +1435,14 @@ const FreeLayoutCanvas = ({
       const { position: snappedDisplayPosition, guides } = getDragSnapResult(
         dragState.node.id,
         {
-          x: rawX + canvasOffset.x,
-          y: rawY + canvasOffset.y,
+          x: rawX + dragState.canvasOffset.x,
+          y: rawY + dragState.canvasOffset.y,
         },
         nodeRects
       );
       const snappedPosition = {
-        x: snappedDisplayPosition.x - canvasOffset.x,
-        y: snappedDisplayPosition.y - canvasOffset.y,
+        x: snappedDisplayPosition.x - dragState.canvasOffset.x,
+        y: snappedDisplayPosition.y - dragState.canvasOffset.y,
       };
 
       if (
@@ -1455,7 +1460,8 @@ const FreeLayoutCanvas = ({
     };
 
     const handleMouseUp = async () => {
-      const nextPosition = draftPositions[dragState.node.id] || dragState.startPosition;
+      const nextPosition =
+        draftPositionsRef.current[dragState.node.id] || dragState.startPosition;
       setDragState(null);
 
       if (dragMovedRef.current) {
@@ -2314,6 +2320,7 @@ const FreeLayoutCanvas = ({
       startX: event.clientX,
       startY: event.clientY,
       startPosition: getPosition(node),
+      canvasOffset,
     });
   };
 

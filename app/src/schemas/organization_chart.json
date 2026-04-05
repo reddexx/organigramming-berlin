@@ -90,6 +90,11 @@
           "enum": ["landscape", "portrait"],
           "enumNames": ["Querformat", "Hochformat"]
         },
+        "paperBackgroundColor": {
+          "type": "string",
+          "title": "Paper Hintergrundfarbe",
+          "default": "#f8f9fa"
+        },
         "logo": {
           "title": "Logo",
           "type": "string",

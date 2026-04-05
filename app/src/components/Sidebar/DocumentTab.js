@@ -1,6 +1,7 @@
 import Form from "@rjsf/bootstrap-4";
 import React, { useEffect, useState, useRef } from "react";
 import { Form as BootstrapForm } from "react-bootstrap";
+import ColorPickerWidget from "../From/ColorPickerWidget";
 import FileSelect from "../From/FileSelect";
 import ObjectFieldTemplate from "../From/ObjectFieldTemplate";
 import MDEditorWidget from "../From/MDEditor";
@@ -78,6 +79,9 @@ const DocumentTab = ({ data, sendDataUp }) => {
       logo: {
         "ui:widget": FileSelect,
         preuploads: preuploads,
+      },
+      paperBackgroundColor: {
+        "ui:widget": ColorPickerWidget,
       },
       version: {
         "ui:options": {

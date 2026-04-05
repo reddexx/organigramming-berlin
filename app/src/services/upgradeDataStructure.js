@@ -316,6 +316,10 @@ export const upgradeDataStructure = (data) => {
     data.document.layoutMode = "tree";
   }
 
+  if (data.document?.paperBackgroundColor === undefined) {
+    data.document.paperBackgroundColor = "#f8f9fa";
+  }
+
   if (!data.settings) {
     data.settings = {};
   }

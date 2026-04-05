@@ -129,6 +129,7 @@ const ChartContainer = forwardRef(
     const isFreeLayout = data?.document?.layoutMode === "free";
     const isEmptyTreeChart = !isFreeLayout && (node.organisations || []).length === 0;
     const customFontFaceCss = buildCustomFontFaceCss(data?.settings?.customFonts || []);
+    const paperBackgroundColor = data?.document?.paperBackgroundColor || "#f8f9fa";
 
     const createDigger = () => {
       return new JSONDigger(
@@ -722,7 +723,7 @@ const ChartContainer = forwardRef(
           exportFileExtension === "pdf" ||
           exportFileExtension === "png"
         ) {
-          node.style.background = "#fff";
+          node.style.background = data?.document?.paperBackgroundColor || "#fff";
           node.style.transform = "";
           node.style.scrollLeft = 0;
           node.style.scrollTop = 0;
@@ -829,7 +830,10 @@ const ChartContainer = forwardRef(
             ref={chart}
             className={"editor " + chartClass + (exporting ? " exporting" : "")}
             onClick={clickChartHandler}
-            onMouseDown={enablePan ? panStartHandler : undefined}
+              style={{
+                transform: transform,
+                "--paper-background-color": paperBackgroundColor,
+              }}
             onMouseMove={enablePan && (panning || potentialPan) ? panHandler : undefined}
             onMouseUp={panning || potentialPan ? panEndHandler : undefined}
           >

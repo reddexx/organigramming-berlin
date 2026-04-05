@@ -14,6 +14,7 @@
     "paperSize": "A3",
     "schemaVersion": "1.1.0",
     "paperOrientation": "landscape",
+    "paperBackgroundColor": "#f8f9fa",
     "layoutMode": "tree",
     "title": "Beispiel Firma",
     "note": "# Allgemeine Informationen können Sie in die Fußzeile schreiben \n\n## Sie können die Inhalte in der Fußzeile aber auch löschen.\n\nLorem markdownum inguinibus vis confinia patriam constitit maduere cognoverat\nlevi! Edere ingens glaebas mente. Se silva Cnosiacas ferrum repertum deferre\nposcimus amantes intenta, fraternaeque.\n\n- Zum Beispiel *allgemeine Telefonnummer*.\n- **Zum Beispiel** allgemeine Postanschrift. \n- Zum Beispiel [allgemeine Internetadresse](https://www.berlin.de/) \n- Amnesque. Fixus quidem simulacra eo, coercebat fuerat. \n- Cum **deque iaces** defendite.",
