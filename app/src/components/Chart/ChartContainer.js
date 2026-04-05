@@ -830,10 +830,7 @@ const ChartContainer = forwardRef(
             ref={chart}
             className={"editor " + chartClass + (exporting ? " exporting" : "")}
             onClick={clickChartHandler}
-              style={{
-                transform: transform,
-                "--paper-background-color": paperBackgroundColor,
-              }}
+            onMouseDown={enablePan ? panStartHandler : undefined}
             onMouseMove={enablePan && (panning || potentialPan) ? panHandler : undefined}
             onMouseUp={panning || potentialPan ? panEndHandler : undefined}
           >
@@ -844,7 +841,10 @@ const ChartContainer = forwardRef(
               className={`paper ${data.document.paperSize} ${data.document.paperOrientation}${
                 isFreeLayout ? " free-layout-paper" : ""
               }`}
-              style={{ transform: transform }}
+              style={{
+                transform: transform,
+                "--paper-background-color": paperBackgroundColor,
+              }}
             >
               {data.document && (
                 <div className="title-container">
