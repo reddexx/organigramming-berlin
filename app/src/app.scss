@@ -104,6 +104,10 @@ body {
   }
 }
 
+.color-picker-modal-backdrop {
+  z-index: 2100 !important;
+}
+
 .control-layer {
   position: fixed;
   height: 100vh;

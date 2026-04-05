@@ -65,7 +65,13 @@ const ColorPickerWidget = (props) => {
         )}
       </div>
 
-      <Modal show={show} onHide={() => setShow(false)} centered>
+      <Modal
+        show={show}
+        onHide={() => setShow(false)}
+        centered
+        style={{ zIndex: 2105 }}
+        backdropClassName="color-picker-modal-backdrop"
+      >
         <Modal.Header closeButton>
           <Modal.Title>Hintergrundfarbe auswählen</Modal.Title>
         </Modal.Header>
