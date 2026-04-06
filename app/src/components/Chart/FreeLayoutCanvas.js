@@ -53,7 +53,6 @@ const DEFAULT_CONNECTOR_COLOR = "#6c757d";
 const MIN_WORKSPACE_WIDTH = 1400;
 const MIN_WORKSPACE_HEIGHT = 900;
 const WORKSPACE_EXPANSION_MARGIN = 480;
-const WORKSPACE_EDGE_BUFFER = 160;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -71,20 +70,6 @@ const getConnectorMarkerId = (connector, appearance) => {
   const idToken = String(connector.id || "connector").replace(/[^a-zA-Z0-9_-]/g, "-");
 
   return `connector-arrowhead-${idToken}-${colorToken}`;
-};
-
-const createWorkspaceBounds = (bounds) => {
-  const minX = Math.min(bounds.minX - WORKSPACE_EXPANSION_MARGIN, -WORKSPACE_EDGE_BUFFER);
-  const minY = Math.min(bounds.minY - WORKSPACE_EXPANSION_MARGIN, -WORKSPACE_EDGE_BUFFER);
-  const maxX = Math.max(bounds.maxX + WORKSPACE_EXPANSION_MARGIN, minX + MIN_WORKSPACE_WIDTH);
-  const maxY = Math.max(bounds.maxY + WORKSPACE_EXPANSION_MARGIN, minY + MIN_WORKSPACE_HEIGHT);
-
-  return {
-    minX,
-    minY,
-    maxX,
-    maxY,
-  };
 };
 
 const getConnectorAppearance = (connector) => {
@@ -1305,20 +1290,9 @@ const FreeLayoutCanvas = ({
     return autoPositions[node.id] || { x: 0, y: 0 };
   }, [autoPositions, draftPositions]);
 
-  const getCommittedPosition = useCallback((node) => {
-    if (node?.layout?.positionMode === "manual") {
-      return {
-        x: Number.isFinite(node.layout?.x) ? node.layout.x : autoPositions[node.id]?.x || 0,
-        y: Number.isFinite(node.layout?.y) ? node.layout.y : autoPositions[node.id]?.y || 0,
-      };
-    }
-
-    return autoPositions[node.id] || { x: 0, y: 0 };
-  }, [autoPositions]);
-
   const currentContentBounds = useMemo(() => {
     const positions = flattenedNodes.map(({ node }) => {
-      const position = getCommittedPosition(node);
+      const position = getPosition(node);
       const width = getNodeWidth(node);
       const height = nodeRects[node.id]?.height || 160;
 
@@ -1345,94 +1319,37 @@ const FreeLayoutCanvas = ({
       maxX: Math.max(...positions.map((position) => position.right)),
       maxY: Math.max(...positions.map((position) => position.bottom)),
     };
-  }, [flattenedNodes, getCommittedPosition, nodeRects]);
-
-  const [workspaceBounds, setWorkspaceBounds] = useState(() =>
-    createWorkspaceBounds(currentContentBounds)
-  );
-
-  useEffect(() => {
-    setWorkspaceBounds((current) => {
-      if (!current) {
-        return createWorkspaceBounds(currentContentBounds);
-      }
-
-      let nextBounds = current;
-
-      if (currentContentBounds.minX < current.minX + WORKSPACE_EDGE_BUFFER) {
-        nextBounds = {
-          ...nextBounds,
-          minX: currentContentBounds.minX - WORKSPACE_EXPANSION_MARGIN,
-        };
-      }
-
-      if (currentContentBounds.minY < current.minY + WORKSPACE_EDGE_BUFFER) {
-        nextBounds = {
-          ...nextBounds,
-          minY: currentContentBounds.minY - WORKSPACE_EXPANSION_MARGIN,
-        };
-      }
-
-      if (currentContentBounds.maxX > current.maxX - WORKSPACE_EDGE_BUFFER) {
-        nextBounds = {
-          ...nextBounds,
-          maxX: currentContentBounds.maxX + WORKSPACE_EXPANSION_MARGIN,
-        };
-      }
-
-      if (currentContentBounds.maxY > current.maxY - WORKSPACE_EDGE_BUFFER) {
-        nextBounds = {
-          ...nextBounds,
-          maxY: currentContentBounds.maxY + WORKSPACE_EXPANSION_MARGIN,
-        };
-      }
-
-      if (nextBounds.maxX - nextBounds.minX < MIN_WORKSPACE_WIDTH) {
-        nextBounds = {
-          ...nextBounds,
-          maxX: nextBounds.minX + MIN_WORKSPACE_WIDTH,
-        };
-      }
-
-      if (nextBounds.maxY - nextBounds.minY < MIN_WORKSPACE_HEIGHT) {
-        nextBounds = {
-          ...nextBounds,
-          maxY: nextBounds.minY + MIN_WORKSPACE_HEIGHT,
-        };
-      }
-
-      return nextBounds === current ? current : nextBounds;
-    });
-  }, [currentContentBounds]);
+  }, [flattenedNodes, getPosition, nodeRects]);
 
   const canvasSize = useMemo(() => {
     return {
-      width: Math.max(MIN_WORKSPACE_WIDTH, workspaceBounds.maxX - workspaceBounds.minX + CANVAS_PADDING * 2),
-      height: Math.max(MIN_WORKSPACE_HEIGHT, workspaceBounds.maxY - workspaceBounds.minY + CANVAS_PADDING * 2),
-      contentWidth: Math.max(0, workspaceBounds.maxX - workspaceBounds.minX),
-      contentHeight: Math.max(0, workspaceBounds.maxY - workspaceBounds.minY),
+      width: Math.max(
+        MIN_WORKSPACE_WIDTH,
+        Math.max(0, currentContentBounds.maxX) + WORKSPACE_EXPANSION_MARGIN
+      ),
+      height: Math.max(
+        MIN_WORKSPACE_HEIGHT,
+        Math.max(0, currentContentBounds.maxY) + WORKSPACE_EXPANSION_MARGIN
+      ),
+      contentWidth: Math.max(0, currentContentBounds.maxX),
+      contentHeight: Math.max(0, currentContentBounds.maxY),
     };
-  }, [workspaceBounds]);
+  }, [currentContentBounds]);
 
   const canvasOffset = useMemo(() => {
-    const x = CANVAS_PADDING - workspaceBounds.minX;
-    const y = CANVAS_PADDING - workspaceBounds.minY;
-
-    return { x, y };
-  }, [workspaceBounds]);
-
-  const activeCanvasOffset = dragState?.canvasOffset || canvasOffset;
+    return { x: 0, y: 0 };
+  }, []);
 
   const getDisplayPosition = useCallback(
     (node) => {
       const position = getPosition(node);
 
       return {
-        x: position.x + activeCanvasOffset.x,
-        y: position.y + activeCanvasOffset.y,
+        x: position.x + canvasOffset.x,
+        y: position.y + canvasOffset.y,
       };
     },
-    [activeCanvasOffset, getPosition]
+    [canvasOffset, getPosition]
   );
 
   const getCanvasPointer = useCallback((clientX, clientY) => {
