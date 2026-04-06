@@ -342,7 +342,7 @@
         }
 
         .connector-line {
-          stroke: $secondary;
+          stroke: var(--connector-color, $secondary);
           stroke-width: 2;
 
           &.manual {
@@ -350,7 +350,7 @@
           }
 
           &.pending {
-            stroke: $primary;
+            opacity: 0.72;
           }
 
           &.dashed {

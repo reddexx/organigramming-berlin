@@ -2521,8 +2521,10 @@ const FreeLayoutCanvas = ({
                     connector.pending ? " pending" : ""
                   }`}
                   d={connector.d}
-                  stroke={appearance.color}
                   strokeLinecap="round"
+                  style={{
+                    "--connector-color": appearance.color || DEFAULT_CONNECTOR_COLOR,
+                  }}
                   markerStart={appearance.sourceArrow ? "url(#connector-arrowhead)" : undefined}
                   markerEnd={appearance.targetArrow ? "url(#connector-arrowhead)" : undefined}
                 />
