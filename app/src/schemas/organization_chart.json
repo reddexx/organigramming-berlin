@@ -489,15 +489,15 @@
               "title": "Position X",
               "type": "integer",
               "default": 0,
-              "minimum": 0,
-              "maximum": 5000
+              "minimum": -100000,
+              "maximum": 100000
             },
             "y": {
               "title": "Position Y",
               "type": "integer",
               "default": 0,
-              "minimum": 0,
-              "maximum": 5000
+              "minimum": -100000,
+              "maximum": 100000
             },
             "connectorParentAnchor": {
               "title": "Connector Anker Elternknoten",

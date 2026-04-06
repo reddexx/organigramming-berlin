@@ -255,8 +255,8 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
       ...(nextNode.layout || {}),
       style: nextNode.layout?.style || "default",
       positionMode: "manual",
-      x: Math.max(0, Math.round(position?.x || 0)),
-      y: Math.max(0, Math.round(position?.y || 0)),
+      x: Math.round(position?.x || 0),
+      y: Math.round(position?.y || 0),
     };
 
     dsDigger.addTopLevelNode(nextNode);

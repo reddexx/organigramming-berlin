@@ -130,6 +130,8 @@ const ChartContainer = forwardRef(
     const isEmptyTreeChart = !isFreeLayout && (node.organisations || []).length === 0;
     const customFontFaceCss = buildCustomFontFaceCss(data?.settings?.customFonts || []);
     const paperBackgroundColor = data?.document?.paperBackgroundColor || "#f8f9fa";
+    const paperTransform = isFreeLayout ? undefined : transform;
+    const effectiveChartTransform = isFreeLayout ? transform : chartTransform;
 
     const createDigger = () => {
       return new JSONDigger(
@@ -489,13 +491,7 @@ const ChartContainer = forwardRef(
       }
 
       if (isFreeLayout) {
-        setTransform(
-          "matrix(1, 0, 0, 1, " +
-            (containerWidth / 2 - chartWidth / 2) +
-            ", " +
-            (containerHeight / 2 - chartHeight / 2) +
-            ")"
-        );
+        setTransform("matrix(1, 0, 0, 1, 0, 0)");
         return;
       }
 
@@ -533,6 +529,11 @@ const ChartContainer = forwardRef(
     };
 
     const updateChartHandler = () => {
+      if (isFreeLayout) {
+        setChartTransform("");
+        return;
+      }
+
       const rootNode = chart.current.querySelector("#n-root");
       let rootNodeHeight = 57;
       if (!chart.current) {
@@ -853,7 +854,7 @@ const ChartContainer = forwardRef(
                 isFreeLayout ? " free-layout-paper" : ""
               }`}
               style={{
-                transform: transform,
+                transform: paperTransform,
                 "--paper-background-color": paperBackgroundColor,
               }}
             >
@@ -900,7 +901,7 @@ const ChartContainer = forwardRef(
                 </div>
               )}
               <div className="chart-container">
-                <div className="chart" style={{ transform: chartTransform }}>
+                <div className="chart" style={{ transform: effectiveChartTransform }}>
                   {isFreeLayout ? (
                     <FreeLayoutCanvas
                       nodes={node.organisations}
