@@ -62,6 +62,13 @@ const getConnectorRenderKey = (connector, appearance) => {
   ].join(":");
 };
 
+const getConnectorMarkerId = (connector, appearance) => {
+  const colorToken = (appearance.color || DEFAULT_CONNECTOR_COLOR).replace(/[^a-zA-Z0-9_-]/g, "-");
+  const idToken = String(connector.id || "connector").replace(/[^a-zA-Z0-9_-]/g, "-");
+
+  return `connector-arrowhead-${idToken}-${colorToken}`;
+};
+
 const getConnectorAppearance = (connector) => {
   if (connector.type === "free") {
     return {
@@ -2484,22 +2491,10 @@ const FreeLayoutCanvas = ({
       }}
     >
       <svg className="free-layout-connectors" aria-hidden="true">
-        <defs>
-          <marker
-            id="connector-arrowhead"
-            markerWidth="8"
-            markerHeight="8"
-            refX="6.8"
-            refY="4"
-            orient="auto-start-reverse"
-            markerUnits="userSpaceOnUse"
-          >
-            <path d="M 0 0 L 8 4 L 0 8 L 1.6 4 z" fill="context-stroke" stroke="none" />
-          </marker>
-        </defs>
         {connectors.map((connector) => (
           (() => {
             const appearance = getConnectorAppearance(connector);
+            const markerId = getConnectorMarkerId(connector, appearance);
 
             return (
               <g
@@ -2508,6 +2503,25 @@ const FreeLayoutCanvas = ({
                 onMouseEnter={() => showConnectorActions(connector.id)}
                 onMouseLeave={() => hideConnectorActions(connector.id)}
               >
+                {(appearance.sourceArrow || appearance.targetArrow) && (
+                  <defs>
+                    <marker
+                      id={markerId}
+                      markerWidth="8"
+                      markerHeight="8"
+                      refX="6.8"
+                      refY="4"
+                      orient="auto-start-reverse"
+                      markerUnits="userSpaceOnUse"
+                    >
+                      <path
+                        d="M 0 0 L 8 4 L 0 8 L 1.6 4 z"
+                        fill={appearance.color || DEFAULT_CONNECTOR_COLOR}
+                        stroke="none"
+                      />
+                    </marker>
+                  </defs>
+                )}
                 <path
                   className={`connector-hit-area ${connector.manual ? "manual" : "auto"}${
                     connector.pending ? " pending" : ""
@@ -2525,8 +2539,8 @@ const FreeLayoutCanvas = ({
                   style={{
                     "--connector-color": appearance.color || DEFAULT_CONNECTOR_COLOR,
                   }}
-                  markerStart={appearance.sourceArrow ? "url(#connector-arrowhead)" : undefined}
-                  markerEnd={appearance.targetArrow ? "url(#connector-arrowhead)" : undefined}
+                  markerStart={appearance.sourceArrow ? `url(#${markerId})` : undefined}
+                  markerEnd={appearance.targetArrow ? `url(#${markerId})` : undefined}
                 />
             
             {hoveredConnectorId === connector.id && contentEditable && (
