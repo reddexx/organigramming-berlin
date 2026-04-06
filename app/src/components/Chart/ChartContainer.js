@@ -488,6 +488,17 @@ const ChartContainer = forwardRef(
         return;
       }
 
+      if (isFreeLayout) {
+        setTransform(
+          "matrix(1, 0, 0, 1, " +
+            (containerWidth / 2 - chartWidth / 2) +
+            ", " +
+            (containerHeight / 2 - chartHeight / 2) +
+            ")"
+        );
+        return;
+      }
+
       let newScale = Math.min(
         (containerWidth - 32) / chartWidth,
         (containerHeight - 32) / chartHeight
