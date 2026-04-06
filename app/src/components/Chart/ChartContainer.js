@@ -269,8 +269,8 @@ const ChartContainer = forwardRef(
       const nextNodeLayout = {
         style: "default",
         positionMode: "manual",
-        x: Math.max(0, Math.round(position?.x || 0)),
-        y: Math.max(0, Math.round(position?.y || 0)),
+        x: Math.round(position?.x || 0),
+        y: Math.round(position?.y || 0),
       };
       const nextNode =
         kind === "note"

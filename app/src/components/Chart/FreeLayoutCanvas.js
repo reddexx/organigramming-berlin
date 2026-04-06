@@ -50,6 +50,10 @@ const MAX_NODE_WIDTH = 480;
 const MIN_NODE_HEIGHT = 0;
 const MAX_NODE_HEIGHT = 640;
 const DEFAULT_CONNECTOR_COLOR = "#6c757d";
+const MIN_WORKSPACE_WIDTH = 1400;
+const MIN_WORKSPACE_HEIGHT = 900;
+const WORKSPACE_EXPANSION_MARGIN = 480;
+const WORKSPACE_EDGE_BUFFER = 160;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -535,7 +539,21 @@ const toFullRect = (rect) => ({
   bottom: rect.top + rect.height,
 });
 
-const snapToGrid = (value) => Math.max(0, Math.round(value / GRID_SIZE) * GRID_SIZE);
+const snapToGrid = (value) => Math.round(value / GRID_SIZE) * GRID_SIZE;
+
+const createWorkspaceBounds = (bounds) => {
+  const minX = Math.min(bounds.minX - WORKSPACE_EXPANSION_MARGIN, -WORKSPACE_EDGE_BUFFER);
+  const minY = Math.min(bounds.minY - WORKSPACE_EXPANSION_MARGIN, -WORKSPACE_EDGE_BUFFER);
+  const maxX = Math.max(bounds.maxX + WORKSPACE_EXPANSION_MARGIN, minX + MIN_WORKSPACE_WIDTH);
+  const maxY = Math.max(bounds.maxY + WORKSPACE_EXPANSION_MARGIN, minY + MIN_WORKSPACE_HEIGHT);
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+  };
+};
 
 const getRectMetrics = (rect) => ({
   left: rect.left,
@@ -645,11 +663,11 @@ const getDragSnapResult = (nodeId, rawPosition, nodeRects) => {
   });
 
   if (bestVerticalGuide) {
-    nextPosition.x = Math.max(0, Math.round(bestVerticalGuide.nextPosition.x));
+    nextPosition.x = Math.round(bestVerticalGuide.nextPosition.x);
   }
 
   if (bestHorizontalGuide) {
-    nextPosition.y = Math.max(0, Math.round(bestHorizontalGuide.nextPosition.y));
+    nextPosition.y = Math.round(bestHorizontalGuide.nextPosition.y);
   }
 
   const resolvedRect = {
@@ -1289,7 +1307,7 @@ const FreeLayoutCanvas = ({
     return autoPositions[node.id] || { x: 0, y: 0 };
   }, [autoPositions, draftPositions]);
 
-  const contentBounds = useMemo(() => {
+  const currentContentBounds = useMemo(() => {
     const positions = flattenedNodes.map(({ node }) => {
       const position = getPosition(node);
       const width = getNodeWidth(node);
@@ -1313,31 +1331,92 @@ const FreeLayoutCanvas = ({
     }
 
     return {
-      minX: Math.min(0, ...positions.map((position) => position.left)),
-      minY: Math.min(0, ...positions.map((position) => position.top)),
+      minX: Math.min(...positions.map((position) => position.left)),
+      minY: Math.min(...positions.map((position) => position.top)),
       maxX: Math.max(...positions.map((position) => position.right)),
       maxY: Math.max(...positions.map((position) => position.bottom)),
     };
   }, [flattenedNodes, getPosition, nodeRects]);
 
+  const [workspaceBounds, setWorkspaceBounds] = useState(() =>
+    createWorkspaceBounds(currentContentBounds)
+  );
+
+  useEffect(() => {
+    setWorkspaceBounds((current) => {
+      let nextBounds = current;
+
+      if (!current) {
+        return createWorkspaceBounds(currentContentBounds);
+      }
+
+      if (currentContentBounds.minX < current.minX + WORKSPACE_EDGE_BUFFER) {
+        nextBounds = {
+          ...nextBounds,
+          minX: currentContentBounds.minX - WORKSPACE_EXPANSION_MARGIN,
+        };
+      }
+
+      if (currentContentBounds.minY < current.minY + WORKSPACE_EDGE_BUFFER) {
+        nextBounds = {
+          ...nextBounds,
+          minY: currentContentBounds.minY - WORKSPACE_EXPANSION_MARGIN,
+        };
+      }
+
+      if (currentContentBounds.maxX > current.maxX - WORKSPACE_EDGE_BUFFER) {
+        nextBounds = {
+          ...nextBounds,
+          maxX: currentContentBounds.maxX + WORKSPACE_EXPANSION_MARGIN,
+        };
+      }
+
+      if (currentContentBounds.maxY > current.maxY - WORKSPACE_EDGE_BUFFER) {
+        nextBounds = {
+          ...nextBounds,
+          maxY: currentContentBounds.maxY + WORKSPACE_EXPANSION_MARGIN,
+        };
+      }
+
+      const nextWidth = nextBounds.maxX - nextBounds.minX;
+      const nextHeight = nextBounds.maxY - nextBounds.minY;
+
+      if (nextWidth < MIN_WORKSPACE_WIDTH) {
+        nextBounds = {
+          ...nextBounds,
+          maxX: nextBounds.minX + MIN_WORKSPACE_WIDTH,
+        };
+      }
+
+      if (nextHeight < MIN_WORKSPACE_HEIGHT) {
+        nextBounds = {
+          ...nextBounds,
+          maxY: nextBounds.minY + MIN_WORKSPACE_HEIGHT,
+        };
+      }
+
+      return nextBounds === current ? current : nextBounds;
+    });
+  }, [currentContentBounds]);
+
   const canvasSize = useMemo(() => {
-    const contentWidth = Math.max(0, contentBounds.maxX - contentBounds.minX);
-    const contentHeight = Math.max(0, contentBounds.maxY - contentBounds.minY);
+    const contentWidth = Math.max(0, workspaceBounds.maxX - workspaceBounds.minX);
+    const contentHeight = Math.max(0, workspaceBounds.maxY - workspaceBounds.minY);
 
     return {
-      width: Math.max(1400, contentWidth + CANVAS_PADDING * 2),
-      height: Math.max(900, contentHeight + CANVAS_PADDING * 2),
+      width: Math.max(MIN_WORKSPACE_WIDTH, contentWidth + CANVAS_PADDING * 2),
+      height: Math.max(MIN_WORKSPACE_HEIGHT, contentHeight + CANVAS_PADDING * 2),
       contentWidth,
       contentHeight,
     };
-  }, [contentBounds]);
+  }, [workspaceBounds]);
 
   const canvasOffset = useMemo(() => {
-    const x = CANVAS_PADDING - contentBounds.minX;
-    const y = CANVAS_PADDING - contentBounds.minY;
+    const x = CANVAS_PADDING - workspaceBounds.minX;
+    const y = CANVAS_PADDING - workspaceBounds.minY;
 
     return { x, y };
-  }, [contentBounds]);
+  }, [workspaceBounds]);
 
   const getDisplayPosition = useCallback(
     (node) => {
