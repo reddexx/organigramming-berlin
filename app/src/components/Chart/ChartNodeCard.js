@@ -84,6 +84,7 @@ const ChartNodeCard = ({ data }) => {
               : "",
           color: `${getContrastTextColor(data.layout?.bgColor)}`,
           fontFamily: data?.layout?.headingFontFamily || undefined,
+          textAlign: data?.headingTextAlign || "left",
         }}
       >
         <h1 style={headingFontStyle}>{data.name}</h1>
@@ -99,7 +100,6 @@ const ChartNodeCard = ({ data }) => {
         </h3>
         {data.type && (
           <h3
-            className="text-end"
             style={{
               ...headingFontStyle,
               fontStyle: "normal",

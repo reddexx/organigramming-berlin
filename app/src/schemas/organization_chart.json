@@ -233,6 +233,13 @@
           "type": "string",
           "title": "Zusatzbezeichnung"
         },
+        "headingTextAlign": {
+          "type": "string",
+          "title": "Ausrichtung Überschrift",
+          "default": "left",
+          "enum": ["left", "center", "right"],
+          "enumNames": ["Links", "Zentriert", "Rechts"]
+        },
         "purposeTextAlign": {
           "type": "string",
           "title": "Ausrichtung Zusatzbezeichnung",

@@ -80,6 +80,17 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     "ui:headless": true,
     current: {
       "ui:headless": true,
+      "ui:order": [
+        "type",
+        "name",
+        "kind",
+        "altName",
+        "noteText",
+        "purpose",
+        "headingTextAlign",
+        "purposeTextAlign",
+        "*"
+      ],
       id: {
         "ui:widget": "hidden",
       },
@@ -90,6 +101,12 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       purpose: {
         "ui:placeholder": "Auswählen o. eingeben",
         "ui:field": CustomDropdown,
+      },
+      headingTextAlign: {
+        "ui:widget": "radio",
+        "ui:options": {
+          inline: true,
+        },
       },
       purposeTextAlign: {
         "ui:widget": "radio",

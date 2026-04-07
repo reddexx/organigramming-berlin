@@ -75,12 +75,36 @@ body {
 
 .customDropdown {
   position: relative;
-  svg {
-    right: 10px;
-    position: relative;
-    float: right;
-    top: 40px;
-    pointer-events: none;
+  display: flex;
+  align-items: center;
+
+  .form-control {
+    padding-right: 2rem;
+  }
+
+  .customDropdown-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.35rem;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.125rem;
+    border: 0;
+    background: transparent;
+    color: $gray-700;
+    z-index: 1;
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    svg {
+      display: block;
+      pointer-events: none;
+    }
   }
 }
 .react-joyride {
