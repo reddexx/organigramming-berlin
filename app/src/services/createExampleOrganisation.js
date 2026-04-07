@@ -8,26 +8,26 @@ const createExampleOrganisation = ({ name = "Neue Organisation", layout } = {}) 
     name,
     id: "n" + uuidv4(),
     uri: { uri: getURI("organisation") },
-    purpose: "Beispielinhalt eintragen",
+    purpose: "",
     contact: {
-      email: "team@beispiel.de",
-      telephone: "+49 30 1234567",
+      email: "",
+      telephone: "",
     },
     address: {
-      street: "Beispielstrasse",
-      housenumber: "1",
-      zipCode: "10115",
-      city: "Berlin",
+      street: "",
+      housenumber: "",
+      zipCode: "",
+      city: "",
     },
     positions: [
       {
         positionType: "Leitung",
         person: {
-          firstName: "Max",
-          lastName: "Mustermann",
+          firstName: "",
+          lastName: "",
           contact: {
-            email: "max.mustermann@beispiel.de",
-            telephone: "+49 30 1234568",
+            email: "",
+            telephone: "",
           },
         },
       },
