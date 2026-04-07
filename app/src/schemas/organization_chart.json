@@ -92,7 +92,7 @@
         },
         "paperBackgroundColor": {
           "type": "string",
-          "title": "Paper Hintergrundfarbe",
+          "title": "Hintergrundfarbe",
           "default": "#f8f9fa"
         },
         "logo": {
