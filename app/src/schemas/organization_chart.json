@@ -222,6 +222,13 @@
           "enum": ["left", "center", "right"],
           "enumNames": ["Links", "Zentriert", "Rechts"]
         },
+        "typeTextAlign": {
+          "type": "string",
+          "title": "Ausrichtung Organisation/Einheit",
+          "default": "left",
+          "enum": ["left", "center", "right"],
+          "enumNames": ["Links", "Zentriert", "Rechts"]
+        },
         "kind": {
           "type": "string",
           "title": "Node-Typ",

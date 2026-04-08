@@ -186,6 +186,12 @@ function addNewPropsToOrgs(data) {
         : "left";
     }
 
+    if (!VALID_TEXT_ALIGNMENTS.includes(org.typeTextAlign)) {
+      org.typeTextAlign = VALID_TEXT_ALIGNMENTS.includes(org.headingTextAlign)
+        ? org.headingTextAlign
+        : "left";
+    }
+
     if (!VALID_TEXT_ALIGNMENTS.includes(org.purposeTextAlign)) {
       org.purposeTextAlign = "left";
     }

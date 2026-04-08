@@ -17,6 +17,7 @@ const propTypes = {
 
 const ChartNodeCard = ({ data }) => {
   const nameTextAlign = data?.nameTextAlign || data?.headingTextAlign || "left";
+  const typeTextAlign = data?.typeTextAlign || data?.headingTextAlign || "left";
   const headingTextAlign = data?.headingTextAlign || "left";
   const purposeTextAlign =
     data?.purposeTextAlign || data?.layout?.purposeTextAlign || "left";
@@ -88,7 +89,7 @@ const ChartNodeCard = ({ data }) => {
               : "",
           color: `${getContrastTextColor(data.layout?.bgColor)}`,
           fontFamily: data?.layout?.headingFontFamily || undefined,
-          textAlign: headingTextAlign,
+          textAlign: "left",
         }}
       >
         <h1 style={{ ...headingFontStyle, textAlign: nameTextAlign }}>{data.name}</h1>
@@ -107,7 +108,7 @@ const ChartNodeCard = ({ data }) => {
             style={{
               ...headingFontStyle,
               fontStyle: "normal",
-              textAlign: headingTextAlign,
+              textAlign: typeTextAlign,
             }}
           >
             <span>

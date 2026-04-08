@@ -32,6 +32,7 @@ const normalizeOrganisationAlignment = (organisation) => {
   return {
     ...organisation,
     nameTextAlign: organisation.nameTextAlign || organisation.headingTextAlign || "left",
+    typeTextAlign: organisation.typeTextAlign || organisation.headingTextAlign || "left",
     purposeTextAlign: organisation.purposeTextAlign || "left",
   };
 };
@@ -93,12 +94,13 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     current: {
       "ui:headless": true,
       "ui:order": [
-        "type",
+        "avatar",
         "name",
         "nameTextAlign",
+        "type",
+        "typeTextAlign",
         "kind",
         "altName",
-        "noteText",
         "purpose",
         "purposeTextAlign",
         "headingTextAlign",
@@ -110,6 +112,15 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       type: {
         "ui:placeholder": "Auswählen o. eingeben z.B. 'Unternehmensbereich'",
         "ui:field": CustomDropdown,
+      },
+      typeTextAlign: {
+        "ui:widget": "radio",
+        "ui:options": {
+          inline: true,
+        },
+      },
+      noteText: {
+        "ui:widget": "hidden",
       },
       purpose: {
         "ui:placeholder": "Auswählen o. eingeben",
@@ -226,12 +237,10 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
             : "Hintergrundstil wird erst aktiv, wenn eine Hintergrundfarbe gesetzt ist.",
         },
         nodeWidth: {
-          "ui:widget": "range",
-          "ui:help": "Breite der Box in Pixeln",
+          "ui:widget": "hidden",
         },
         nodeMinHeight: {
-          "ui:widget": "range",
-          "ui:help": "Minimale Höhe der Box in Pixeln, 0 = automatisch",
+          "ui:widget": "hidden",
         },
         positionMode: {
           "ui:widget": isFreeLayout ? "hidden" : "radio",
@@ -244,6 +253,18 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
               }),
         },
         purposeTextAlign: {
+          "ui:widget": "hidden",
+        },
+        connectorColor: {
+          "ui:widget": "hidden",
+        },
+        connectorLineStyle: {
+          "ui:widget": "hidden",
+        },
+        connectorParentArrow: {
+          "ui:widget": "hidden",
+        },
+        connectorChildArrow: {
           "ui:widget": "hidden",
         },
         x: {
@@ -319,10 +340,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         },
       },
       suborganizationOrientation: {
-        "ui:widget": "radio",
-        "ui:options": {
-          inline: true,
-        },
+        "ui:widget": "hidden",
       },
     },
   };
