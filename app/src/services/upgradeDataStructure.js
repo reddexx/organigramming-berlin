@@ -6,6 +6,7 @@ const CONNECTOR_ANCHOR_SIDES = ["top", "right", "bottom", "left"];
 const CONNECTOR_LINE_STYLES = ["solid", "dashed", "dotted"];
 const DEFAULT_CONNECTOR_COLOR = "#6c757d";
 const DEFAULT_CONNECTOR_LINE_STYLE = "solid";
+const VALID_TEXT_ALIGNMENTS = ["left", "center", "right"];
 
 function sanitizeFreeConnections(document = {}, validNodeIds = new Set()) {
   const freeConnections = Array.isArray(document.freeConnections)
@@ -177,6 +178,16 @@ function addNewPropsToOrgs(data) {
 
     if (org.purpose === undefined) {
       org.purpose = "";
+    }
+
+    if (!VALID_TEXT_ALIGNMENTS.includes(org.nameTextAlign)) {
+      org.nameTextAlign = VALID_TEXT_ALIGNMENTS.includes(org.headingTextAlign)
+        ? org.headingTextAlign
+        : "left";
+    }
+
+    if (!VALID_TEXT_ALIGNMENTS.includes(org.purposeTextAlign)) {
+      org.purposeTextAlign = "left";
     }
 
     if (!org.layout) {

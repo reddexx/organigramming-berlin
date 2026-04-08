@@ -24,6 +24,18 @@ import {
   removeConnectionsForNodeIds,
 } from "../../services/freeLayout";
 
+const normalizeOrganisationAlignment = (organisation) => {
+  if (!organisation) {
+    return organisation;
+  }
+
+  return {
+    ...organisation,
+    nameTextAlign: organisation.nameTextAlign || organisation.headingTextAlign || "left",
+    purposeTextAlign: organisation.purposeTextAlign || "left",
+  };
+};
+
 const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCharts = [] }) => {
   const [formData, setFormData] = useState({ current: selected });
   const [idPrefix, setIdPrefix] = useState("root");
@@ -83,12 +95,13 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       "ui:order": [
         "type",
         "name",
+        "nameTextAlign",
         "kind",
         "altName",
         "noteText",
         "purpose",
-        "headingTextAlign",
         "purposeTextAlign",
+        "headingTextAlign",
         "*"
       ],
       id: {
@@ -102,11 +115,14 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         "ui:placeholder": "Auswählen o. eingeben",
         "ui:field": CustomDropdown,
       },
-      headingTextAlign: {
+      nameTextAlign: {
         "ui:widget": "radio",
         "ui:options": {
           inline: true,
         },
+      },
+      headingTextAlign: {
+        "ui:widget": "hidden",
       },
       purposeTextAlign: {
         "ui:widget": "radio",
@@ -317,7 +333,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
 
   useEffect(() => {
     if (selected != null) {
-      setFormData({ current: { ...selected } });
+      setFormData({ current: normalizeOrganisationAlignment(selected) });
       setIdPrefix(selected.id);
     } else {
       setFormData({ current: null });
@@ -408,15 +424,17 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
       }, 700);
     }
 
-    const nextFormData = {
-      current: {
-        ...e.formData.current,
-        linkedChartId: e.formData.current.linkedChartId || "",
-        layout: {
-          ...(e.formData.current.layout || {}),
-          positionMode: e.formData.current?.layout?.positionMode || "auto",
-        },
+    const nextCurrent = normalizeOrganisationAlignment({
+      ...e.formData.current,
+      linkedChartId: e.formData.current.linkedChartId || "",
+      layout: {
+        ...(e.formData.current.layout || {}),
+        positionMode: e.formData.current?.layout?.positionMode || "auto",
       },
+    });
+
+    const nextFormData = {
+      current: nextCurrent,
     };
 
     setFormData(nextFormData);
@@ -424,13 +442,13 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     if (e.formData.current && e.formData.current.avatar && e.formData.current.avatar.indexOf('base64') !== -1) {
       handleAvatarUpload(e.formData.current.avatar);
       // do not send base64 contents up
-      const tmp = { ...nextFormData.current };
+      const tmp = { ...nextCurrent };
       delete tmp.avatar;
       handleSendDataUp({ ...tmp });
       return;
     }
 
-    handleSendDataUp({ ...nextFormData.current });
+    handleSendDataUp({ ...nextCurrent });
   };
 
   const onBlur = async () => {

@@ -6,6 +6,7 @@ const createExampleOrganisation = ({ name = "Neue Organisation", layout } = {}) 
     kind: "organisation",
     type: "Team",
     name,
+    nameTextAlign: "left",
     id: "n" + uuidv4(),
     uri: { uri: getURI("organisation") },
     purpose: "",
