@@ -72,6 +72,61 @@ const defaultProps = {
   canPasteAtPosition: false,
 };
 
+const VIEWPORT_MARGIN = 32;
+const ROOT_NODE_TOP_MARGIN = 24;
+
+const parseTransformMatrix = (matrixValue = "") => {
+  if (!matrixValue) {
+    return { scale: 1, x: 0, y: 0 };
+  }
+
+  const values = (matrixValue.match(/-?\d*\.?\d+/g) || []).map(Number);
+
+  if (matrixValue.startsWith("matrix3d(") && values.length >= 14) {
+    return {
+      scale: Number.isFinite(values[0]) ? values[0] : 1,
+      x: Number.isFinite(values[12]) ? values[12] : 0,
+      y: Number.isFinite(values[13]) ? values[13] : 0,
+    };
+  }
+
+  if (matrixValue.startsWith("matrix(") && values.length >= 6) {
+    return {
+      scale: Number.isFinite(values[0]) ? values[0] : 1,
+      x: Number.isFinite(values[4]) ? values[4] : 0,
+      y: Number.isFinite(values[5]) ? values[5] : 0,
+    };
+  }
+
+  return { scale: 1, x: 0, y: 0 };
+};
+
+const formatTransformMatrix = (scale = 1, x = 0, y = 0) => {
+  const roundedScale = Number.isFinite(scale) ? Number(scale.toFixed(4)) : 1;
+  const roundedX = Number.isFinite(x) ? Number(x.toFixed(2)) : 0;
+  const roundedY = Number.isFinite(y) ? Number(y.toFixed(2)) : 0;
+
+  return `matrix(${roundedScale}, 0, 0, ${roundedScale}, ${roundedX}, ${roundedY})`;
+};
+
+const getPointerPagePosition = (event) => {
+  if (event?.targetTouches?.length === 1) {
+    return {
+      pageX: event.targetTouches[0].pageX,
+      pageY: event.targetTouches[0].pageY,
+    };
+  }
+
+  if (typeof event?.pageX === "number" && typeof event?.pageY === "number") {
+    return {
+      pageX: event.pageX,
+      pageY: event.pageY,
+    };
+  }
+
+  return null;
+};
+
 const ChartContainer = forwardRef(
   (
     {
@@ -166,17 +221,23 @@ const ChartContainer = forwardRef(
     }, [data]);
 
     useEffect(() => {
-      resetViewHandler();
-      setTimeout(() => {
-        updateChartHandler();
+      const timer = setTimeout(() => {
+        resetViewWhenReady();
       }, 50);
+
+      return () => {
+        clearTimeout(timer);
+      };
     }, []);
 
     useEffect(() => {
-      setTimeout(() => {
-        updateChartHandler();
+      const timer = setTimeout(() => {
+        resetViewWhenReady();
       }, 50);
 
+      return () => {
+        clearTimeout(timer);
+      };
     }, [update, data]);
 
     const resetViewWhenReady = (attempt = 0) => {
@@ -191,6 +252,7 @@ const ChartContainer = forwardRef(
       const paperHeight = paperElement?.clientHeight || 0;
 
       if (containerWidth && containerHeight && paperWidth && paperHeight) {
+        updateChartHandler();
         resetViewHandler();
         return;
       }
@@ -230,6 +292,44 @@ const ChartContainer = forwardRef(
       data?.document?.layoutMode,
       data?.document?.paperSize,
       data?.document?.paperOrientation,
+    ]);
+
+    useEffect(() => {
+      if (!chart.current || typeof ResizeObserver === "undefined") {
+        return undefined;
+      }
+
+      const observedElements = [
+        chart.current,
+        chart.current.querySelector("#paper"),
+        chart.current.querySelector(".chart-container"),
+        chart.current.querySelector(".chart"),
+      ].filter(Boolean);
+
+      let frameId = null;
+      const observer = new ResizeObserver(() => {
+        if (frameId !== null) {
+          window.cancelAnimationFrame(frameId);
+        }
+
+        frameId = window.requestAnimationFrame(() => {
+          resetViewWhenReady();
+        });
+      });
+
+      observedElements.forEach((element) => observer.observe(element));
+
+      return () => {
+        if (frameId !== null) {
+          window.cancelAnimationFrame(frameId);
+        }
+        observer.disconnect();
+      };
+    }, [
+      data?.organisations,
+      data?.document?.layoutMode,
+      data?.document?.paperOrientation,
+      data?.document?.paperSize,
     ]);
 
     const changeHierarchy = async (draggedItemData, dropTargetId) => {
@@ -352,18 +452,13 @@ const ChartContainer = forwardRef(
     };
 
     const panHandler = (e) => {
-      // support touch and mouse
-      let pageX = 0;
-      let pageY = 0;
-      if (!e.targetTouches) {
-        pageX = e.pageX;
-        pageY = e.pageY;
-      } else if (e.targetTouches.length === 1) {
-        pageX = e.targetTouches[0].pageX;
-        pageY = e.targetTouches[0].pageY;
-      } else if (e.targetTouches && e.targetTouches.length > 1) {
+      const pointer = getPointerPagePosition(e);
+
+      if (!pointer) {
         return;
       }
+
+      const { pageX, pageY } = pointer;
 
       // If we only have a potential pan (mouse pressed but not moved enough), check threshold
       if (!panning && potentialPan) {
@@ -381,35 +476,11 @@ const ChartContainer = forwardRef(
 
       if (!panning) return;
 
-      let newX = 0;
-      let newY = 0;
-      if (!e.targetTouches) {
-        newX = pageX - startX;
-        newY = pageY - startY;
-      } else {
-        newX = pageX - startX;
-        newY = pageY - startY;
-      }
+      const currentTransform = parseTransformMatrix(transform);
+      const newX = pageX - startX;
+      const newY = pageY - startY;
 
-      if (transform === "") {
-        if (transform.indexOf("3d") === -1) {
-          setTransform("matrix(1,0,0,1," + newX + "," + newY + ")");
-        } else {
-          setTransform(
-            "matrix3d(1,0,0,0,0,1,0,0,0,0,1,0," + newX + ", " + newY + ",0,1)"
-          );
-        }
-      } else {
-        let matrix = transform.split(",");
-        if (transform.indexOf("3d") === -1) {
-          matrix[4] = newX;
-          matrix[5] = newY + ")";
-        } else {
-          matrix[12] = newX;
-          matrix[13] = newY;
-        }
-        setTransform(matrix.join(","));
-      }
+      setTransform(formatTransformMatrix(currentTransform.scale, newX, newY));
     };
 
     const panStartHandler = (e) => {
@@ -420,55 +491,81 @@ const ChartContainer = forwardRef(
         return;
       }
 
-      let lastX = 0;
-      let lastY = 0;
-      if (transform !== "") {
-        let matrix = transform.split(",");
-        if (transform.indexOf("3d") === -1) {
-          lastX = parseInt(matrix[4]);
-          lastY = parseInt(matrix[5]);
-        } else {
-          lastX = parseInt(matrix[12]);
-          lastY = parseInt(matrix[13]);
-        }
+      const pointer = getPointerPagePosition(e);
+      if (!pointer) {
+        return;
       }
 
+      const { x: lastX, y: lastY } = parseTransformMatrix(transform);
+
       // mark potential pan; actual panning will start after small mouse movement
-      if (!e.targetTouches) {
-        setPotentialStartX(e.pageX);
-        setPotentialStartY(e.pageY);
-      } else if (e.targetTouches.length === 1) {
-        setPotentialStartX(e.targetTouches[0].pageX);
-        setPotentialStartY(e.targetTouches[0].pageY);
-      }
-      setStartX(lastX ? (e.pageX ? e.pageX - lastX : 0) : 0);
-      setStartY(lastY ? (e.pageY ? e.pageY - lastY : 0) : 0);
+      setPotentialStartX(pointer.pageX);
+      setPotentialStartY(pointer.pageY);
+      setStartX(pointer.pageX - lastX);
+      setStartY(pointer.pageY - lastY);
       setPotentialPan(true);
     };
 
     const updateViewScale = (newScale) => {
-      let matrix = [];
-      let targetScale = 1;
-      if (transform === "") {
-        setTransform("matrix(" + newScale + ", 0, 0, " + newScale + ", 0, 0)");
-      } else {
-        matrix = transform.split(",");
-        if (transform.indexOf("3d") === -1) {
-          targetScale = Math.abs(window.parseFloat(matrix[3]) * newScale);
-          if (targetScale > zoomoutLimit && targetScale < zoominLimit) {
-            matrix[0] = "matrix(" + targetScale;
-            matrix[3] = targetScale;
-            setTransform(matrix.join(","));
-          }
-        } else {
-          targetScale = Math.abs(window.parseFloat(matrix[5]) * newScale);
-          if (targetScale > zoomoutLimit && targetScale < zoominLimit) {
-            matrix[0] = "matrix3d(" + targetScale;
-            matrix[5] = targetScale;
-            setTransform(matrix.join(","));
-          }
-        }
+      const currentTransform = parseTransformMatrix(transform);
+      const targetScale = Math.abs(currentTransform.scale * newScale);
+
+      if (targetScale > zoomoutLimit && targetScale < zoominLimit) {
+        setTransform(
+          formatTransformMatrix(targetScale, currentTransform.x, currentTransform.y)
+        );
       }
+    };
+
+    const getChartMetrics = () => {
+      if (!chart.current) {
+        return null;
+      }
+
+      const paperElement = chart.current.querySelector("#paper");
+      const chartContainerElement = chart.current.querySelector(".chart-container");
+      const chartElement = chart.current.querySelector(".chart");
+      const rootNodeElement = chart.current.querySelector("#n-root");
+
+      if (!paperElement || !chartContainerElement || !chartElement) {
+        return null;
+      }
+
+      const paperWidth = paperElement.clientWidth;
+      const paperHeight = paperElement.clientHeight;
+      const chartWidth = chartElement.clientWidth;
+      const chartHeight = chartElement.clientHeight;
+      const chartContainerWidth = chartContainerElement.clientWidth;
+      const chartContainerHeight = chartContainerElement.clientHeight;
+
+      if (
+        !paperWidth ||
+        !paperHeight ||
+        !chartWidth ||
+        !chartHeight ||
+        !chartContainerWidth ||
+        !chartContainerHeight
+      ) {
+        return null;
+      }
+
+      let rootOffsetTop = 0;
+      if (rootNodeElement) {
+        const chartRect = chartElement.getBoundingClientRect();
+        const rootRect = rootNodeElement.getBoundingClientRect();
+        const currentChartScale = parseTransformMatrix(chartTransform).scale || 1;
+        rootOffsetTop = (rootRect.top - chartRect.top) / currentChartScale;
+      }
+
+      return {
+        paperWidth,
+        paperHeight,
+        chartWidth,
+        chartHeight,
+        chartContainerWidth,
+        chartContainerHeight,
+        rootOffsetTop,
+      };
     };
 
     const resetViewHandler = () => {
@@ -481,38 +578,35 @@ const ChartContainer = forwardRef(
         return;
       }
 
-      const containerWidth = chart.current.clientWidth,
-        containerHeight = chart.current.clientHeight,
-        chartWidth = paperElement.clientWidth,
-        chartHeight = paperElement.clientHeight;
+      const containerWidth = chart.current.clientWidth;
+      const containerHeight = chart.current.clientHeight;
+      const chartWidth = paperElement.clientWidth;
+      const chartHeight = paperElement.clientHeight;
 
       if (!containerWidth || !containerHeight || !chartWidth || !chartHeight) {
         return;
       }
 
       if (isFreeLayout) {
-        setTransform("matrix(1, 0, 0, 1, 0, 0)");
+        setTransform(formatTransformMatrix(1, 0, 0));
         return;
       }
 
       let newScale = Math.min(
-        (containerWidth - 32) / chartWidth,
-        (containerHeight - 32) / chartHeight
+        (containerWidth - VIEWPORT_MARGIN) / chartWidth,
+        (containerHeight - VIEWPORT_MARGIN) / chartHeight
       );
 
-      newScale = newScale - 0.03;
+      if (!Number.isFinite(newScale) || newScale <= 0) {
+        newScale = 1;
+      }
 
-      setTransform(
-        "matrix(" +
-          newScale +
-          ", 0, 0, " +
-          newScale +
-          ", " +
-          (containerWidth - chartWidth) / 2 +
-          ", " +
-          (containerHeight - chartHeight * (1.98 - newScale)) / 2 +
-          ")"
-      );
+      newScale = Math.min(1, newScale);
+
+      const translateX = (containerWidth - chartWidth * newScale) / 2;
+      const translateY = (containerHeight - chartHeight * newScale) / 2;
+
+      setTransform(formatTransformMatrix(newScale, translateX, translateY));
     };
 
     const zoomHandler = (e) => {
@@ -534,60 +628,34 @@ const ChartContainer = forwardRef(
         return;
       }
 
-      const rootNode = chart.current.querySelector("#n-root");
-      let rootNodeHeight = 57;
-      if (!chart.current) {
+      const metrics = getChartMetrics();
+      if (!metrics) {
         return;
       }
 
-      if (rootNode) {
-        rootNodeHeight = rootNode.clientHeight;
-      }
-
-      const chartContainerElement = chart.current.querySelector(".chart-container");
-      const chartElement = chart.current.querySelector(".chart");
-
-      if (!chartContainerElement || !chartElement) {
-        return;
-      }
-
-      const paperWidth = chartContainerElement.clientWidth,
-        paperHeight = chartContainerElement.clientHeight,
-        chartWidth = chartElement.clientWidth,
-        chartHeight = chartElement.clientHeight;
-
-      if (!paperWidth || !paperHeight || !chartWidth || !chartHeight) {
-        return;
-      }
+      const availableWidth = Math.max(metrics.paperWidth - VIEWPORT_MARGIN, 0);
+      const availableHeight = Math.max(metrics.chartContainerHeight - VIEWPORT_MARGIN, 0);
+      const contentHeight = Math.max(
+        metrics.chartHeight - metrics.rootOffsetTop,
+        1
+      );
 
       let newScale = Math.min(
-        paperWidth / chartWidth,
-        paperHeight / (chartHeight - rootNodeHeight)
+        availableWidth / metrics.chartWidth,
+        availableHeight / contentHeight
       );
 
-      //Minimum Scale
-      if (newScale < 0.75) {
-        newScale = 0.75;
-        setSizeWarning(true);
-      } else if (newScale > 1.2) {
-        //Maximum Scale
-        newScale = 1.2;
-        setSizeWarning(false);
-      } else {
-        setSizeWarning(false);
+      if (!Number.isFinite(newScale) || newScale <= 0) {
+        newScale = 1;
       }
 
-      setChartTransform(
-        "matrix(" +
-          newScale +
-          ", 0, 0, " +
-          newScale +
-          ", " +
-          (paperWidth - chartWidth) / 2 +
-          ", " +
-          (paperHeight - chartHeight - rootNodeHeight) / 2 +
-          ")"
-      );
+      newScale = Math.max(0.3, Math.min(1, newScale));
+      setSizeWarning(newScale < 1);
+
+      const translateX = (metrics.paperWidth - metrics.chartWidth * newScale) / 2;
+      const translateY = ROOT_NODE_TOP_MARGIN - metrics.rootOffsetTop * newScale;
+
+      setChartTransform(formatTransformMatrix(newScale, translateX, translateY));
     };
 
     const exportSVG = async (node, exportFilename, userView) => {
