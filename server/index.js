@@ -8,6 +8,22 @@ const app = express();
 const PORT = process.env.PORT || 80;
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const SHARED_FILE = path.join(DATA_DIR, 'shared-charts.json');
+const TEMPLATE_FILE = path.join(DATA_DIR, 'templates.json');
+
+async function readList(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function writeList(filePath, list) {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(filePath, JSON.stringify(list, null, 2), 'utf8');
+}
 
 function normalizeMainCharts(list, preferredId) {
   if (!Array.isArray(list)) return [];
@@ -55,11 +71,10 @@ app.get('/env.json', async (req, res) => {
 
 app.get('/api/charts', async (req, res) => {
   try {
-    const raw = await fs.readFile(SHARED_FILE, 'utf8');
-    const list = JSON.parse(raw);
+    const list = await readList(SHARED_FILE);
     const normalized = normalizeMainCharts(list);
     if (JSON.stringify(normalized) !== JSON.stringify(list)) {
-      await fs.writeFile(SHARED_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+      await writeList(SHARED_FILE, normalized);
     }
     res.json(normalized);
   } catch (e) {
@@ -70,17 +85,7 @@ app.get('/api/charts', async (req, res) => {
 
 app.post('/api/charts', async (req, res) => {
   try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    let list = (
-      (await (async () => {
-        try {
-          const raw = await fs.readFile(SHARED_FILE, 'utf8');
-          return JSON.parse(raw);
-        } catch (e) {
-          return [];
-        }
-      })())
-    );
+    let list = await readList(SHARED_FILE);
     const payload = req.body;
     const shouldOverwrite = Boolean(payload.overwrite && payload.id);
     const existingIndex = shouldOverwrite
@@ -114,7 +119,7 @@ app.post('/api/charts', async (req, res) => {
 
     list = normalizeMainCharts(list, payload.isMainChart ? payload.id : undefined);
 
-    await fs.writeFile(SHARED_FILE, JSON.stringify(list, null, 2), 'utf8');
+    await writeList(SHARED_FILE, list);
     res.status(existingIndex >= 0 ? 200 : 201).json(payload);
   } catch (e) {
     console.error(e);
@@ -125,18 +130,66 @@ app.post('/api/charts', async (req, res) => {
 app.delete('/api/charts/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const raw = await fs.readFile(SHARED_FILE, 'utf8');
-    const list = JSON.parse(raw);
+    const list = await readList(SHARED_FILE);
     if (!Array.isArray(list)) return res.status(400).json({ error: 'invalid list' });
     if (list.length <= 1) {
       return res.status(400).json({ error: 'Konnte nicht gelöscht werden, da es das letzte Organigramm ist' });
     }
     const filtered = list.filter((c) => c.id !== id);
-    await fs.writeFile(SHARED_FILE, JSON.stringify(filtered, null, 2), 'utf8');
+    await writeList(SHARED_FILE, filtered);
     res.status(200).json({ success: true });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'failed to delete' });
+  }
+});
+
+app.get('/api/templates', async (req, res) => {
+  try {
+    const list = await readList(TEMPLATE_FILE);
+    res.json(list);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
+app.post('/api/templates', async (req, res) => {
+  try {
+    const list = await readList(TEMPLATE_FILE);
+    const payload = req.body || {};
+
+    if (!payload.id) payload.id = Date.now().toString();
+    payload.timestamp = new Date().toISOString();
+
+    const existingIndex = list.findIndex((template) => template.id === payload.id);
+
+    if (existingIndex >= 0) {
+      list[existingIndex] = {
+        ...list[existingIndex],
+        ...payload,
+      };
+    } else {
+      list.unshift(payload);
+    }
+
+    await writeList(TEMPLATE_FILE, list);
+    res.status(existingIndex >= 0 ? 200 : 201).json(payload);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'failed to save template' });
+  }
+});
+
+app.delete('/api/templates/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const list = await readList(TEMPLATE_FILE);
+    const filtered = list.filter((template) => template.id !== id);
+    await writeList(TEMPLATE_FILE, filtered);
+    res.status(200).json({ success: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'failed to delete template' });
   }
 });
 

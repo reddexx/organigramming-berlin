@@ -6,6 +6,11 @@ import AlertModal from "./AlertModal";
 import { validateData } from "../../services/service";
 import { upgradeDataStructure } from "../../services/upgradeDataStructure";
 
+const EMPTY_DOCUMENT_LOGO =
+  "https://turbologo.com/articles/wp-content/uploads/2019/05/no-logo.png";
+
+const cloneDocumentData = (documentData) => JSON.parse(JSON.stringify(documentData));
+
 const NewDocumetModal = (props) => {
   const [alertModalShow, setAlertModalShow] = useState(false);
   const [hideModal, setHideModal] = useState(false);
@@ -13,18 +18,34 @@ const NewDocumetModal = (props) => {
   const [importData, setImportData] = useState(null);
   const [useFlexibleMode, setUseFlexibleMode] = useState(false);
 
-  const applyNewDocumentOptions = (documentData) => {
-    if (!useFlexibleMode) {
-      return documentData;
-    }
-
-    return {
+  const applyNewDocumentOptions = (documentData, options = {}) => {
+    const forceNoLogo = options.forceNoLogo === true;
+    const nextDocumentData = {
       ...documentData,
       document: {
         ...(documentData.document || {}),
+        logo: forceNoLogo
+          ? EMPTY_DOCUMENT_LOGO
+          : documentData?.document?.logo || EMPTY_DOCUMENT_LOGO,
+      },
+    };
+
+    if (!useFlexibleMode) {
+      return nextDocumentData;
+    }
+
+    return {
+      ...nextDocumentData,
+      document: {
+        ...(nextDocumentData.document || {}),
         layoutMode: "free",
       },
     };
+  };
+
+  const prepareImportedDocument = (documentData, options = {}) => {
+    const upgradedDocument = upgradeDataStructure(cloneDocumentData(documentData));
+    return applyNewDocumentOptions(upgradedDocument, options);
   };
 
   const continueWithImportedDocument = () => {
@@ -44,17 +65,29 @@ const NewDocumetModal = (props) => {
   const onCreateNew = () => {
     setHideModal(true);
     setAlertModalShow(true);
-    const newInitDocument = applyNewDocumentOptions(
-      upgradeDataStructure(emptyDocument)
-    );
+    const newInitDocument = prepareImportedDocument(emptyDocument, { forceNoLogo: true });
     setImportData(newInitDocument);
   };
 
   const templateSelected = (e) => {
-    const fileToLoad = e.target?.value;
-    if (!fileToLoad) return;
+    const templateKey = e.target?.value;
+    if (!templateKey) return;
     setHideModal(true);
     setAlertModalShow(true);
+
+    if (templateKey.startsWith("saved:")) {
+      const templateId = templateKey.replace("saved:", "");
+      const selectedTemplate = (props.templates || []).find(
+        (template) => template.id === templateId
+      );
+
+      if (selectedTemplate?.data) {
+        setImportData(prepareImportedDocument(selectedTemplate.data));
+      }
+      return;
+    }
+
+    const fileToLoad = templateKey.replace("static:", "");
 
     const fetchData = async (fileToLoad) => {
       try {
@@ -63,7 +96,7 @@ const NewDocumetModal = (props) => {
           throw new Error("Network response was not ok");
         }
         const jsonData = await response.json();
-        const newInitDocument = upgradeDataStructure(jsonData);
+        const newInitDocument = prepareImportedDocument(jsonData);
         setImportData(newInitDocument);
       } catch (error) {
         console.error("Error fetching the JSON data:", error);
@@ -79,7 +112,7 @@ const NewDocumetModal = (props) => {
     reader.onload = async (e) => {
       const text = e.target.result;
       let data = JSON.parse(text);
-      data = upgradeDataStructure(data);
+      data = prepareImportedDocument(data);
       const [valid, errors] = validateData(data);
       if (!valid) {
         setImportError(errors);
@@ -140,11 +173,23 @@ const NewDocumetModal = (props) => {
                   <Form.Select
                     aria-label="Default select example"
                     onChange={(e) => templateSelected(e)}
+                    defaultValue=""
                   >
-                    <option>Wählen Sie ein Template aus der Liste aus</option>
-                    <option value="berSen">Verwaltungsvorlage Berlin (Senat)</option>
-                    <option value="berBez">Verwaltungsvorlage Berlin (Bezirk)</option>
-                    <option value="beispielOrg">Beispiel Firma</option>
+                    <option value="">Wählen Sie ein Template aus der Liste aus</option>
+                    {(props.templates || []).length > 0 && (
+                      <optgroup label="Gespeicherte Templates">
+                        {(props.templates || []).map((template) => (
+                          <option key={template.id} value={`saved:${template.id}`}>
+                            {template.title}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <optgroup label="Beispiel Templates">
+                      <option value="static:berSen">Verwaltungsvorlage Berlin (Senat)</option>
+                      <option value="static:berBez">Verwaltungsvorlage Berlin (Bezirk)</option>
+                      <option value="static:beispielOrg">Beispiel Firma</option>
+                    </optgroup>
                   </Form.Select>
                 </Form.Group>
               </Col>

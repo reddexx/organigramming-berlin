@@ -163,6 +163,46 @@ const SettingsModal = (props) => {
               Abteilungen, Zusatzbezeichnungen und importierte Schriftarten
               verwalten.
             </p>
+            <div className="mt-4">
+              <h5>Gespeicherte Templates</h5>
+              <p>Hier können Sie benutzerdefinierte Templates entfernen.</p>
+              {(props.templates || []).length === 0 ? (
+                <p className="text-muted mb-0">Keine gespeicherten Templates vorhanden.</p>
+              ) : (
+                <div>
+                  {(props.templates || []).map((template) => (
+                    <div
+                      key={template.id}
+                      className="d-flex justify-content-between align-items-center border rounded px-3 py-2 mb-2"
+                    >
+                      <div>
+                        <div>{template.title}</div>
+                        <small className="text-muted">
+                          {template.timestamp
+                            ? new Date(template.timestamp).toLocaleString()
+                            : ""}
+                        </small>
+                      </div>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Möchten Sie das Template "${template.title}" wirklich entfernen?`
+                            )
+                          ) {
+                            props.onDeleteTemplate && props.onDeleteTemplate(template.id);
+                          }
+                        }}
+                      >
+                        Entfernen
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             {warningMessages && warningMessages?.length !== 0 && (
               <>
                 <p>Für die ausgewählte Validirung gelten folgende Regeln:</p>

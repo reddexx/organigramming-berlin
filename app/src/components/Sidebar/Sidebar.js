@@ -38,11 +38,15 @@ const Sidebar = forwardRef(
       isAuthenticated,
       onRequestLogin,
       onPublish,
+      onSaveTemplate,
+      onCloneCurrentChart,
       sharedCharts = [],
+      templates = [],
       onLoadSharedChart,
       logout,
       currentSharedChartId,
       onDeleteSharedChart,
+      onDeleteTemplate,
     },
     ref
   ) => {
@@ -109,6 +113,7 @@ const Sidebar = forwardRef(
             }}
             onSaveCurrentDocument={onSave}
             sendDataUp={onChange}
+            templates={templates}
           />
         )}
         {exportModalShow && (
@@ -127,6 +132,8 @@ const Sidebar = forwardRef(
             data={data}
             sendDataUp={onChange}
             onSave={onSave}
+            templates={templates}
+            onDeleteTemplate={onDeleteTemplate}
             onHide={() => setSettingsModalShow(false)}
           />
         )}
@@ -148,7 +155,7 @@ const Sidebar = forwardRef(
               <Modal.Title>Organigramm speichern</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-              Möchten Sie den aktuellen Stand überschreiben oder ein neues Organigramm erstellen?
+              Möchten Sie den aktuellen Stand überschreiben, ein neues Organigramm erstellen oder den Stand als Template speichern?
               {currentSharedChart && (
                 <div className="mt-3 text-muted">
                   Aktuell geladen: <strong>{currentSharedChart.title}</strong>
@@ -177,6 +184,15 @@ const Sidebar = forwardRef(
                 }}
               >
                 Überschreiben
+              </Button>
+              <Button
+                variant="success"
+                onClick={() => {
+                  setSaveModalShow(false);
+                  onSaveTemplate && onSaveTemplate();
+                }}
+              >
+                Als Template speichern
               </Button>
             </Modal.Footer>
           </Modal>
@@ -331,6 +347,24 @@ const Sidebar = forwardRef(
                       </svg>
                     </Button>
 
+                    <Button
+                      variant="light"
+                      onClick={() => {
+                        onCloneCurrentChart && onCloneCurrentChart();
+                      }}
+                      title="Aktuelles Organigramm klonen"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        fill="currentColor"
+                        className="bi bi-files"
+                        viewBox="0 0 16 16"
+                      >
+                        <path d="M13 0a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-1v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h1V2a2 2 0 0 1 2-2zM5 3v9a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1m-1 1H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-1H6a2 2 0 0 1-2-2z" />
+                      </svg>
+                    </Button>
                     <Button
                       variant="light"
                       className={

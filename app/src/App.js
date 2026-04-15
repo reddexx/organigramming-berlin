@@ -27,6 +27,18 @@ import { getExternalData } from "./services/getExternalData";
 import JSONDigger from "./services/jsonDigger";
 import { getJoyrideSettings } from "./lib/getJoyrideSettings";
 
+const cloneData = (value) => JSON.parse(JSON.stringify(value));
+
+const buildCloneTitle = (title) => {
+  const trimmedTitle = (title || "").trim();
+
+  if (!trimmedTitle) {
+    return "Untitled clone";
+  }
+
+  return trimmedTitle.endsWith(" clone") ? trimmedTitle : `${trimmedTitle} clone`;
+};
+
 const initdata = () => {
   let doc = initDocument;
 
@@ -86,6 +98,7 @@ const App = () => {
   const [adminPassword, setAdminPassword] = useState("");
   const [sharedCharts, setSharedCharts] = useState([]);
   const [currentSharedChartId, setCurrentSharedChartId] = useState(null);
+  const [templates, setTemplates] = useState([]);
 
   const [importError, setImportError] = useState(null);
   const [dataUrlError, setDataUrlError] = useState(null);
@@ -323,8 +336,27 @@ const App = () => {
 
   const showLoginModal = () => setAuthModalShow(true);
 
-  const getSharedCharts = () => {
-    return sharedCharts;
+  const saveCurrentTemplate = () => {
+    const templateData = cloneData(data);
+    const payload = {
+      title: templateData?.document?.title || "Untitled",
+      data: templateData,
+    };
+
+    return fetch("/api/templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => res.json())
+      .then((saved) => {
+        setTemplates((prev) => [saved, ...(prev || [])]);
+        return saved;
+      })
+      .catch((e) => {
+        console.error("save template failed", e);
+        return null;
+      });
   };
 
   const publishCurrentChart = (options = {}) => {
@@ -370,6 +402,39 @@ const App = () => {
       });
   };
 
+  const cloneCurrentChart = () => {
+    const clonedData = cloneData(data);
+    clonedData.document = {
+      ...(clonedData.document || {}),
+      title: buildCloneTitle(clonedData?.document?.title),
+    };
+
+    const payload = {
+      title: clonedData.document.title,
+      data: clonedData,
+      isMainChart: false,
+    };
+
+    return fetch("/api/charts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => res.json())
+      .then((saved) => {
+        setSharedCharts((prev) => normalizeMainCharts([saved, ...(prev || [])]));
+        setCurrentSharedChartId(saved.id);
+        if (saved?.data) {
+          onChange(saved.data);
+        }
+        return saved;
+      })
+      .catch((e) => {
+        console.error("clone failed", e);
+        return null;
+      });
+  };
+
   const loadSharedChart = (id) => {
     const item = sharedCharts.find((s) => s.id === id);
     if (item && item.data) {
@@ -407,13 +472,22 @@ const App = () => {
       .catch(() => setSharedCharts([]));
   }, []);
 
+  useEffect(() => {
+    fetch("/api/templates")
+      .then((r) => r.json())
+      .then((list) => {
+        setTemplates(Array.isArray(list) ? list : []);
+      })
+      .catch(() => setTemplates([]));
+  }, []);
+
   const deleteSharedChart = (id) => {
     if (!id) return Promise.resolve(null);
     return fetch(`/api/charts/${id}`, { method: 'DELETE' })
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body.message || 'Delete failed');
+          throw new Error(body.error || body.message || 'Delete failed');
         }
         setSharedCharts((prev) => {
           const remaining = normalizeMainCharts((prev || []).filter((s) => s.id !== id));
@@ -432,6 +506,25 @@ const App = () => {
       })
       .catch((e) => {
         console.error('delete failed', e);
+        throw e;
+      });
+  };
+
+  const deleteTemplate = (id) => {
+    if (!id) return Promise.resolve(null);
+
+    return fetch(`/api/templates/${id}`, { method: "DELETE" })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || body.message || "Delete failed");
+        }
+
+        setTemplates((prev) => (prev || []).filter((template) => template.id !== id));
+        return true;
+      })
+      .catch((e) => {
+        console.error("delete template failed", e);
         throw e;
       });
   };
@@ -586,10 +679,14 @@ const App = () => {
             isAuthenticated={isAuthenticated}
             onRequestLogin={showLoginModal}
             onPublish={publishCurrentChart}
+            onSaveTemplate={saveCurrentTemplate}
+            onCloneCurrentChart={cloneCurrentChart}
             sharedCharts={sharedCharts}
+            templates={templates}
             onLoadSharedChart={loadSharedChart}
             currentSharedChartId={currentSharedChartId}
             onDeleteSharedChart={deleteSharedChart}
+            onDeleteTemplate={deleteTemplate}
             logout={logout}
             adminPassword={adminPassword}
           />

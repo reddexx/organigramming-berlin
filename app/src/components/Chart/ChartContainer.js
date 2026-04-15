@@ -182,7 +182,7 @@ const ChartContainer = forwardRef(
       [data.organisations]
     );
     const isFreeLayout = data?.document?.layoutMode === "free";
-    const isEmptyTreeChart = !isFreeLayout && (node.organisations || []).length === 0;
+    const isEmptyChart = (node.organisations || []).length === 0;
     const customFontFaceCss = buildCustomFontFaceCss(data?.settings?.customFonts || []);
     const paperBackgroundColor = data?.document?.paperBackgroundColor || "#f8f9fa";
     const paperTransform = isFreeLayout ? undefined : transform;
@@ -984,7 +984,7 @@ const ChartContainer = forwardRef(
                       onPasteNodeAtPosition={onPasteNodeAtPosition}
                       canPasteAtPosition={canPasteAtPosition}
                     />
-                  ) : isEmptyTreeChart ? (
+                  ) : isEmptyChart ? (
                     <div className="empty-chart-state">
                       <div className="empty-chart-card">
                         <h2>Neues Organigramm</h2>
@@ -992,6 +992,12 @@ const ChartContainer = forwardRef(
                           Dieses Dokument ist noch leer. Legen Sie die erste Organisation an,
                           um das Organigramm zu starten.
                         </p>
+                        {isFreeLayout && (
+                          <p>
+                            Auch im flexiblen Modus startet das Organigramm mit einer ersten
+                            Karte.
+                          </p>
+                        )}
                         {contentEditable && (
                           <Button type="button" variant="success" onClick={() => onAddInitNode()}>
                             Neue Organisation anlegen
