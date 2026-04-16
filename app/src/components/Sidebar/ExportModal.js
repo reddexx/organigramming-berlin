@@ -66,7 +66,6 @@ const ExportModal = (props) => {
         ...formData,
         export: { ...formData.export, saveExport: "save" },
       });
-    }
       return;
     }
 
@@ -79,7 +78,9 @@ const ExportModal = (props) => {
         },
       });
       return;
-    if (!formData.export || !formData.export.filename) {
+    }
+
+    if (!formData.export.filename) {
 
       setFormData({
         ...formData,
