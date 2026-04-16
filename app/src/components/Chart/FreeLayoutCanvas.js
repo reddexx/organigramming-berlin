@@ -1237,6 +1237,7 @@ const FreeLayoutCanvas = ({
   const nodeRectsRef = useRef({});
   const connectorDragStateRef = useRef(null);
   const hoveredConnectorTimeoutRef = useRef(null);
+  const lastHandledExternalContextMenuRequestRef = useRef(null);
 
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [nodeRects, setNodeRects] = useState({});
@@ -1393,6 +1394,11 @@ const FreeLayoutCanvas = ({
     [canvasSize.height, canvasSize.width, contentEditable, onCloseContextMenu]
   );
 
+  const closeCanvasMenus = useCallback(() => {
+    setPendingNodeMenu(null);
+    setCanvasContextMenu(null);
+  }, []);
+
   useEffect(() => {
     nodeRectsRef.current = nodeRects;
   }, [nodeRects]);
@@ -1420,6 +1426,16 @@ const FreeLayoutCanvas = ({
       return;
     }
 
+    const requestKey = [
+      externalCanvasContextMenuRequest.clientX,
+      externalCanvasContextMenuRequest.clientY,
+      externalCanvasContextMenuRequest.timestamp,
+    ].join(":");
+
+    if (lastHandledExternalContextMenuRequestRef.current === requestKey) {
+      return;
+    }
+
     const pointer = getCanvasPointer(
       externalCanvasContextMenuRequest.clientX,
       externalCanvasContextMenuRequest.clientY
@@ -1429,8 +1445,37 @@ const FreeLayoutCanvas = ({
       return;
     }
 
+    lastHandledExternalContextMenuRequestRef.current = requestKey;
     openCanvasContextMenu(pointer);
   }, [externalCanvasContextMenuRequest, getCanvasPointer, openCanvasContextMenu]);
+
+  useEffect(() => {
+    if (!canvasContextMenu && !pendingNodeMenu) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      if (event.target.closest(".free-layout-node-menu")) {
+        return;
+      }
+
+      closeCanvasMenus();
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        closeCanvasMenus();
+      }
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [canvasContextMenu, closeCanvasMenus, pendingNodeMenu]);
 
   useEffect(() => {
     const measureNodes = () => {
@@ -2129,8 +2174,7 @@ const FreeLayoutCanvas = ({
     setConnectorDragState(null);
     setHoveredConnectorId(null);
     setHoveredResizeNodeId(null);
-    setPendingNodeMenu(null);
-    setCanvasContextMenu(null);
+    closeCanvasMenus();
   };
 
   const showConnectorActions = useCallback((connectorId) => {
@@ -2425,8 +2469,7 @@ const FreeLayoutCanvas = ({
     event.preventDefault();
     event.stopPropagation();
 
-    setPendingNodeMenu(null);
-    setCanvasContextMenu(null);
+    closeCanvasMenus();
 
     if (onClickNode) {
       onClickNode(node, { openSidebar: false });
@@ -2461,7 +2504,7 @@ const FreeLayoutCanvas = ({
       sourceAnchor,
       nextPendingNodeMenu.pointer
     );
-    setPendingNodeMenu(null);
+    closeCanvasMenus();
 
     const createdNode = await onCreateNodeAtPosition({
       position: getCreatePositionFromPointer(nextPendingNodeMenu.pointer),
@@ -2487,7 +2530,7 @@ const FreeLayoutCanvas = ({
     }
 
     const nextMenu = canvasContextMenu;
-    setCanvasContextMenu(null);
+    closeCanvasMenus();
 
     const createdNode = await onCreateNodeAtPosition({
       position: getCreatePositionFromPointer(nextMenu.pointer),
@@ -2506,7 +2549,7 @@ const FreeLayoutCanvas = ({
     }
 
     const nextMenu = canvasContextMenu;
-    setCanvasContextMenu(null);
+    closeCanvasMenus();
 
     const pastedNode = await onPasteNodeAtPosition({
       position: getCreatePositionFromPointer(nextMenu.pointer),
