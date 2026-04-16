@@ -46,6 +46,7 @@ const SettingsModal = (props) => {
     settings: {
       "ui:headless": true,
       "ui:order": [
+        "validator",
         "customFonts",
         "roleOptions",
         "departmentOptions",

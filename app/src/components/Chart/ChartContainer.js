@@ -264,6 +264,10 @@ const ChartContainer = forwardRef(
     }, []);
 
     useEffect(() => {
+      if (isFreeLayout) {
+        return undefined;
+      }
+
       const timer = setTimeout(() => {
         resetViewWhenReady();
       }, 50);

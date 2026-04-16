@@ -186,7 +186,7 @@ const App = () => {
   };
 
   const saveCurrentViewAsPdf = () => {
-    exportTo("pdf", true, "", { useCurrentView: true });
+    exportTo("pdf", true, "");
   };
 
   useMount(() => {
