@@ -127,15 +127,6 @@ const getPointerPagePosition = (event) => {
   return null;
 };
 
-const collectStructureTokens = (nodes = [], parentId = "root", result = []) => {
-  (nodes || []).forEach((node) => {
-    result.push(`${parentId}:${node.id}`);
-    collectStructureTokens(node.organisations || [], node.id, result);
-  });
-
-  return result;
-};
-
 const ChartContainer = forwardRef(
   (
     {
@@ -167,7 +158,6 @@ const ChartContainer = forwardRef(
     const paper = useRef();
     const topNode = useRef();
     const dataRef = useRef(data);
-    const lastFreeLayoutAutoFitSignature = useRef(null);
 
     const [startX, setStartX] = useState(0);
     const [startY, setStartY] = useState(0);
@@ -181,6 +171,8 @@ const ChartContainer = forwardRef(
     const [dragging, setDragging] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [sizeWarning, setSizeWarning] = useState(false);
+    const [freeLayoutCanvasContextMenuRequest, setFreeLayoutCanvasContextMenuRequest] =
+      useState(null);
 
     const node = useMemo(
       () => ({
@@ -193,25 +185,6 @@ const ChartContainer = forwardRef(
     );
     const isFreeLayout = data?.document?.layoutMode === "free";
     const isEmptyChart = (node.organisations || []).length === 0;
-    const freeLayoutAutoFitSignature = useMemo(
-      () =>
-        JSON.stringify({
-          layoutMode: data?.document?.layoutMode || "",
-          paperOrientation: data?.document?.paperOrientation || "",
-          paperSize: data?.document?.paperSize || "",
-          nodes: collectStructureTokens(data?.organisations || []),
-          freeConnections: (data?.document?.freeConnections || [])
-            .map((connection) => connection.id)
-            .sort(),
-        }),
-      [
-        data?.document?.freeConnections,
-        data?.document?.layoutMode,
-        data?.document?.paperOrientation,
-        data?.document?.paperSize,
-        data?.organisations,
-      ]
-    );
     const customFontFaceCss = buildCustomFontFaceCss(data?.settings?.customFonts || []);
     const paperBackgroundColor = data?.document?.paperBackgroundColor || "#f8f9fa";
     const paperTransform = isFreeLayout ? undefined : transform;
@@ -276,27 +249,6 @@ const ChartContainer = forwardRef(
         clearTimeout(timer);
       };
     }, [update, data, isFreeLayout]);
-
-    useEffect(() => {
-      if (!isFreeLayout) {
-        lastFreeLayoutAutoFitSignature.current = null;
-        return undefined;
-      }
-
-      if (freeLayoutAutoFitSignature === lastFreeLayoutAutoFitSignature.current) {
-        return undefined;
-      }
-
-      lastFreeLayoutAutoFitSignature.current = freeLayoutAutoFitSignature;
-
-      const timer = setTimeout(() => {
-        resetViewWhenReady();
-      }, 50);
-
-      return () => {
-        clearTimeout(timer);
-      };
-    }, [freeLayoutAutoFitSignature, isFreeLayout]);
 
     const resetViewWhenReady = (attempt = 0) => {
       if (!chart.current) {
@@ -501,6 +453,29 @@ const ChartContainer = forwardRef(
         selectNodeService.clearSelectedNodeInfo();
         onCloseContextMenu();
       }
+    };
+
+    const handleFreeLayoutPaperContextMenu = (event) => {
+      if (!isFreeLayout || !contentEditable) {
+        return;
+      }
+
+      if (
+        event.target.closest(
+          ".free-layout-canvas, .btn-edit, button, input, textarea, select, a"
+        )
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      onCloseContextMenu?.();
+      setFreeLayoutCanvasContextMenuRequest({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        timestamp: Date.now(),
+      });
     };
 
     const onDragNode = (e) => {
@@ -1118,6 +1093,7 @@ const ChartContainer = forwardRef(
                 transform: paperTransform,
                 "--paper-background-color": paperBackgroundColor,
               }}
+              onContextMenu={isFreeLayout ? handleFreeLayoutPaperContextMenu : undefined}
             >
               {data.document && (
                 <div className="title-container">
@@ -1176,6 +1152,9 @@ const ChartContainer = forwardRef(
                       onCreateNodeAtPosition={createFreeLayoutNode}
                       onPasteNodeAtPosition={onPasteNodeAtPosition}
                       canPasteAtPosition={canPasteAtPosition}
+                      externalCanvasContextMenuRequest={
+                        freeLayoutCanvasContextMenuRequest
+                      }
                     />
                   ) : isEmptyChart ? (
                     <div className="empty-chart-state">

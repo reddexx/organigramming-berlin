@@ -17,6 +17,7 @@ const propTypes = {
   onCreateNodeAtPosition: PropTypes.func,
   onPasteNodeAtPosition: PropTypes.func,
   canPasteAtPosition: PropTypes.bool,
+  externalCanvasContextMenuRequest: PropTypes.object,
 };
 
 const defaultProps = {
@@ -29,6 +30,7 @@ const defaultProps = {
   onCreateNodeAtPosition: null,
   onPasteNodeAtPosition: null,
   canPasteAtPosition: false,
+  externalCanvasContextMenuRequest: null,
 };
 
 const LEVEL_GAP = 220;
@@ -1225,6 +1227,7 @@ const FreeLayoutCanvas = ({
   onCreateNodeAtPosition,
   onPasteNodeAtPosition,
   canPasteAtPosition,
+  externalCanvasContextMenuRequest,
 }) => {
   const wrapperRef = useRef();
   const nodeRefs = useRef({});
@@ -1369,6 +1372,27 @@ const FreeLayoutCanvas = ({
     };
   }, []);
 
+  const openCanvasContextMenu = useCallback(
+    (pointer) => {
+      if (!contentEditable || !pointer) {
+        return;
+      }
+
+      onCloseContextMenu?.();
+      setPendingNodeMenu(null);
+      setConnectorDragState(null);
+      setHoveredConnectorId(null);
+      setHoveredResizeNodeId(null);
+      setCanvasContextMenu({
+        pointer: {
+          x: clamp(Math.round(pointer.x), 0, Math.max(0, canvasSize.width)),
+          y: clamp(Math.round(pointer.y), 0, Math.max(0, canvasSize.height)),
+        },
+      });
+    },
+    [canvasSize.height, canvasSize.width, contentEditable, onCloseContextMenu]
+  );
+
   useEffect(() => {
     nodeRectsRef.current = nodeRects;
   }, [nodeRects]);
@@ -1390,6 +1414,23 @@ const FreeLayoutCanvas = ({
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!externalCanvasContextMenuRequest) {
+      return;
+    }
+
+    const pointer = getCanvasPointer(
+      externalCanvasContextMenuRequest.clientX,
+      externalCanvasContextMenuRequest.clientY
+    );
+
+    if (!pointer) {
+      return;
+    }
+
+    openCanvasContextMenu(pointer);
+  }, [externalCanvasContextMenuRequest, getCanvasPointer, openCanvasContextMenu]);
 
   useEffect(() => {
     const measureNodes = () => {
@@ -2136,14 +2177,7 @@ const FreeLayoutCanvas = ({
     event.preventDefault();
     event.stopPropagation();
 
-    onCloseContextMenu?.();
-    setPendingNodeMenu(null);
-    setConnectorDragState(null);
-    setHoveredConnectorId(null);
-    setHoveredResizeNodeId(null);
-    setCanvasContextMenu({
-      pointer: getCanvasPointer(event.clientX, event.clientY),
-    });
+    openCanvasContextMenu(getCanvasPointer(event.clientX, event.clientY));
   };
 
   const handleConnectorRemove = async (event, connector) => {
@@ -2222,6 +2256,13 @@ const FreeLayoutCanvas = ({
     }
 
     setEditingConnector(null);
+  };
+
+  const handleConnectorColorReset = () => {
+    setConnectorEditorValues((current) => ({
+      ...current,
+      color: DEFAULT_CONNECTOR_COLOR,
+    }));
   };
 
   const handleAnchorMouseDown = (event, nodeMeta, side) => {
@@ -2398,6 +2439,14 @@ const FreeLayoutCanvas = ({
     onContextMenu?.(event);
   };
 
+  const getCreatePositionFromPointer = useCallback(
+    (pointer) => ({
+      x: Math.max(0, Math.round((pointer?.x || 0) - canvasOffset.x - 112)),
+      y: Math.max(0, Math.round((pointer?.y || 0) - canvasOffset.y - 80)),
+    }),
+    [canvasOffset.x, canvasOffset.y]
+  );
+
   const handlePendingNodeCreate = async () => {
     if (!pendingNodeMenu || !onCreateNodeAtPosition) {
       return;
@@ -2415,10 +2464,7 @@ const FreeLayoutCanvas = ({
     setPendingNodeMenu(null);
 
     const createdNode = await onCreateNodeAtPosition({
-      position: {
-        x: nextPendingNodeMenu.pointer.x - canvasOffset.x - 112,
-        y: nextPendingNodeMenu.pointer.y - canvasOffset.y - 80,
-      },
+      position: getCreatePositionFromPointer(nextPendingNodeMenu.pointer),
       connectionDraft: {
         sourceNodeId: nextPendingNodeMenu.sourceNodeId,
         sourceAnchor: nextPendingNodeMenu.sourceSide,
@@ -2444,10 +2490,7 @@ const FreeLayoutCanvas = ({
     setCanvasContextMenu(null);
 
     const createdNode = await onCreateNodeAtPosition({
-      position: {
-        x: nextMenu.pointer.x - canvasOffset.x - 112,
-        y: nextMenu.pointer.y - canvasOffset.y - 80,
-      },
+      position: getCreatePositionFromPointer(nextMenu.pointer),
       kind,
     });
 
@@ -2466,10 +2509,7 @@ const FreeLayoutCanvas = ({
     setCanvasContextMenu(null);
 
     const pastedNode = await onPasteNodeAtPosition({
-      position: {
-        x: nextMenu.pointer.x - canvasOffset.x - 112,
-        y: nextMenu.pointer.y - canvasOffset.y - 80,
-      },
+      position: getCreatePositionFromPointer(nextMenu.pointer),
     });
 
     if (pastedNode?.id) {
@@ -2688,6 +2728,16 @@ const FreeLayoutCanvas = ({
                   }))
                 }
               />
+              <div className="mt-2">
+                <Button
+                  type="button"
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={handleConnectorColorReset}
+                >
+                  Zurücksetzen
+                </Button>
+              </div>
             </Form.Group>
           </Form>
         </Modal.Body>
