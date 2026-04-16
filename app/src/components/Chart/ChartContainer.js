@@ -680,6 +680,34 @@ const ChartContainer = forwardRef(
       };
     };
 
+    const getPaperContentBounds = (paperElement) => {
+      if (!paperElement) {
+        return null;
+      }
+
+      const paperRect = paperElement.getBoundingClientRect();
+      const measuredElements = [
+        paperElement,
+        ...paperElement.querySelectorAll(
+          ".title-container, .chart-container, .note-container, .free-layout-canvas"
+        ),
+      ];
+
+      let maxRight = paperElement.clientWidth;
+      let maxBottom = paperElement.clientHeight;
+
+      measuredElements.forEach((element) => {
+        const rect = element.getBoundingClientRect();
+        maxRight = Math.max(maxRight, rect.right - paperRect.left);
+        maxBottom = Math.max(maxBottom, rect.bottom - paperRect.top);
+      });
+
+      return {
+        width: Math.max(Math.ceil(maxRight), paperElement.clientWidth),
+        height: Math.max(Math.ceil(maxBottom), paperElement.clientHeight),
+      };
+    };
+
     const resetViewHandler = () => {
       if (!chart.current) {
         return;
@@ -851,6 +879,10 @@ const ChartContainer = forwardRef(
       node.style.background = userView.nodeBackground;
       node.style.transform = userView.nodeTransform;
       node.style.overflow = userView.nodeOverflow;
+      node.style.width = userView.nodeWidth;
+      node.style.height = userView.nodeHeight;
+      node.style.minWidth = userView.nodeMinWidth;
+      node.style.minHeight = userView.nodeMinHeight;
       container.current.scrollLeft = userView.originalScrollLeft;
       container.current.scrollTop = userView.originalScrollTop;
 
@@ -916,6 +948,9 @@ const ChartContainer = forwardRef(
         const exportFilename = fileName || "OrgChart";
         const exportFileExtension = fileextension || "png";
         const useCurrentView = Boolean(options?.useCurrentView);
+        const shouldExpandFreeLayoutExport =
+          isFreeLayout &&
+          ["svg", "pdf", "png"].includes(exportFileExtension);
 
         const originalScrollLeft = container.current.scrollLeft;
         container.current.scrollLeft = 0;
@@ -936,11 +971,26 @@ const ChartContainer = forwardRef(
           nodeBackground: node.style.background,
           nodeTransform: node.style.transform,
           nodeOverflow: node.style.overflow,
+          nodeWidth: node.style.width,
+          nodeHeight: node.style.height,
+          nodeMinWidth: node.style.minWidth,
+          nodeMinHeight: node.style.minHeight,
         };
 
         if (useCurrentView) {
           node.style.background = data?.document?.paperBackgroundColor || "#fff";
           node.style.overflow = "hidden";
+        } else if (shouldExpandFreeLayoutExport) {
+          const paperContentBounds = getPaperContentBounds(node);
+
+          if (paperContentBounds) {
+            node.style.width = `${paperContentBounds.width}px`;
+            node.style.height = `${paperContentBounds.height}px`;
+            node.style.minWidth = `${paperContentBounds.width}px`;
+            node.style.minHeight = `${paperContentBounds.height}px`;
+          }
+
+          node.style.background = data?.document?.paperBackgroundColor || "#fff";
         } else if (
           exportFileExtension === "svg" ||
           exportFileExtension === "pdf" ||
