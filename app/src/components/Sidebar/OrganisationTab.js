@@ -16,8 +16,6 @@ import ColorPickerWidget from "../From/ColorPickerWidget";
 
 import CustomDropdown from "../From/CustomDropdown";
 
-import { checkErrors } from "../../services/checkErrors";
-
 import { getDefinitions } from "../../services/getDefinitions";
 import {
   collectSubtreeNodeIds,
@@ -532,12 +530,6 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
     setSelected(null);
   };
 
-  // Custom validation function
-  const customValidate = (formData, errors) => {
-    const validatorName = dsDiggerRef.current?.ds?.settings?.validator;
-    return checkErrors(formData, errors, validatorName, "organisation");
-  };
-
   return (
     <div className="tab" id="organisation-tab">
       <AlertModal
@@ -697,9 +689,7 @@ const OrganisationTab = ({ sendDataUp, selected, setSelected, dsDigger, sharedCh
         idPrefix={idPrefix}
         ArrayFieldTemplate={ArrayFieldTemplate}
         ObjectFieldTemplate={ObjectFieldTemplate}
-        liveValidate
         showErrorList={false}
-        validate={customValidate}
       >
         <br />
       </SchemaForm>

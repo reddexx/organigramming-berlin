@@ -193,7 +193,6 @@ const DocumentTab = ({ data, sendDataUp }) => {
         ObjectFieldTemplate={ObjectFieldTemplate}
         onChange={onChange}
         // onBlur={onBlur}
-        liveValidate
         showErrorList={false}
         fields={fields}
       >

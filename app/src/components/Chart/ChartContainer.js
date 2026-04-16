@@ -127,6 +127,15 @@ const getPointerPagePosition = (event) => {
   return null;
 };
 
+const collectStructureTokens = (nodes = [], parentId = "root", result = []) => {
+  (nodes || []).forEach((node) => {
+    result.push(`${parentId}:${node.id}`);
+    collectStructureTokens(node.organisations || [], node.id, result);
+  });
+
+  return result;
+};
+
 const ChartContainer = forwardRef(
   (
     {
@@ -158,6 +167,7 @@ const ChartContainer = forwardRef(
     const paper = useRef();
     const topNode = useRef();
     const dataRef = useRef(data);
+    const lastFreeLayoutAutoFitSignature = useRef(null);
 
     const [startX, setStartX] = useState(0);
     const [startY, setStartY] = useState(0);
@@ -183,6 +193,25 @@ const ChartContainer = forwardRef(
     );
     const isFreeLayout = data?.document?.layoutMode === "free";
     const isEmptyChart = (node.organisations || []).length === 0;
+    const freeLayoutAutoFitSignature = useMemo(
+      () =>
+        JSON.stringify({
+          layoutMode: data?.document?.layoutMode || "",
+          paperOrientation: data?.document?.paperOrientation || "",
+          paperSize: data?.document?.paperSize || "",
+          nodes: collectStructureTokens(data?.organisations || []),
+          freeConnections: (data?.document?.freeConnections || [])
+            .map((connection) => connection.id)
+            .sort(),
+        }),
+      [
+        data?.document?.freeConnections,
+        data?.document?.layoutMode,
+        data?.document?.paperOrientation,
+        data?.document?.paperSize,
+        data?.organisations,
+      ]
+    );
     const customFontFaceCss = buildCustomFontFaceCss(data?.settings?.customFonts || []);
     const paperBackgroundColor = data?.document?.paperBackgroundColor || "#f8f9fa";
     const paperTransform = isFreeLayout ? undefined : transform;
@@ -221,6 +250,10 @@ const ChartContainer = forwardRef(
     }, [data]);
 
     useEffect(() => {
+      if (isFreeLayout) {
+        return undefined;
+      }
+
       const timer = setTimeout(() => {
         resetViewWhenReady();
       }, 50);
@@ -238,7 +271,28 @@ const ChartContainer = forwardRef(
       return () => {
         clearTimeout(timer);
       };
-    }, [update, data]);
+    }, [update, data, isFreeLayout]);
+
+    useEffect(() => {
+      if (!isFreeLayout) {
+        lastFreeLayoutAutoFitSignature.current = null;
+        return undefined;
+      }
+
+      if (freeLayoutAutoFitSignature === lastFreeLayoutAutoFitSignature.current) {
+        return undefined;
+      }
+
+      lastFreeLayoutAutoFitSignature.current = freeLayoutAutoFitSignature;
+
+      const timer = setTimeout(() => {
+        resetViewWhenReady();
+      }, 50);
+
+      return () => {
+        clearTimeout(timer);
+      };
+    }, [freeLayoutAutoFitSignature, isFreeLayout]);
 
     const resetViewWhenReady = (attempt = 0) => {
       if (!chart.current) {
@@ -299,6 +353,10 @@ const ChartContainer = forwardRef(
         return undefined;
       }
 
+      if (isFreeLayout) {
+        return undefined;
+      }
+
       const observedElements = [
         chart.current,
         chart.current.querySelector("#paper"),
@@ -330,6 +388,7 @@ const ChartContainer = forwardRef(
       data?.document?.layoutMode,
       data?.document?.paperOrientation,
       data?.document?.paperSize,
+      isFreeLayout,
     ]);
 
     const changeHierarchy = async (draggedItemData, dropTargetId) => {
@@ -568,6 +627,55 @@ const ChartContainer = forwardRef(
       };
     };
 
+    const getFreeLayoutBounds = () => {
+      if (!chart.current) {
+        return null;
+      }
+
+      const freeLayoutItems = Array.from(
+        chart.current.querySelectorAll(".free-layout-item")
+      );
+
+      if (freeLayoutItems.length === 0) {
+        return null;
+      }
+
+      let minLeft = Number.POSITIVE_INFINITY;
+      let minTop = Number.POSITIVE_INFINITY;
+      let maxRight = Number.NEGATIVE_INFINITY;
+      let maxBottom = Number.NEGATIVE_INFINITY;
+
+      freeLayoutItems.forEach((item) => {
+        const width = item.offsetWidth;
+        const height = item.offsetHeight;
+
+        if (!width && !height) {
+          return;
+        }
+
+        minLeft = Math.min(minLeft, item.offsetLeft);
+        minTop = Math.min(minTop, item.offsetTop);
+        maxRight = Math.max(maxRight, item.offsetLeft + width);
+        maxBottom = Math.max(maxBottom, item.offsetTop + height);
+      });
+
+      if (
+        !Number.isFinite(minLeft) ||
+        !Number.isFinite(minTop) ||
+        !Number.isFinite(maxRight) ||
+        !Number.isFinite(maxBottom)
+      ) {
+        return null;
+      }
+
+      return {
+        left: minLeft,
+        top: minTop,
+        width: Math.max(1, maxRight - minLeft),
+        height: Math.max(1, maxBottom - minTop),
+      };
+    };
+
     const resetViewHandler = () => {
       if (!chart.current) {
         return;
@@ -588,7 +696,32 @@ const ChartContainer = forwardRef(
       }
 
       if (isFreeLayout) {
-        setTransform(formatTransformMatrix(1, 0, 0));
+        const freeLayoutBounds = getFreeLayoutBounds();
+
+        if (!freeLayoutBounds) {
+          setTransform(formatTransformMatrix(1, 0, 0));
+          return;
+        }
+
+        let newScale = Math.min(
+          (containerWidth - VIEWPORT_MARGIN) / freeLayoutBounds.width,
+          (containerHeight - VIEWPORT_MARGIN) / freeLayoutBounds.height
+        );
+
+        if (!Number.isFinite(newScale) || newScale <= 0) {
+          newScale = 1;
+        }
+
+        newScale = Math.min(1, newScale);
+
+        const translateX =
+          (containerWidth - freeLayoutBounds.width * newScale) / 2 -
+          freeLayoutBounds.left * newScale;
+        const translateY =
+          (containerHeight - freeLayoutBounds.height * newScale) / 2 -
+          freeLayoutBounds.top * newScale;
+
+        setTransform(formatTransformMatrix(newScale, translateX, translateY));
         return;
       }
 
@@ -713,6 +846,7 @@ const ChartContainer = forwardRef(
     const resetChart = ({ node, userView }) => {
       node.style.background = userView.nodeBackground;
       node.style.transform = userView.nodeTransform;
+      node.style.overflow = userView.nodeOverflow;
       container.current.scrollLeft = userView.originalScrollLeft;
       container.current.scrollTop = userView.originalScrollTop;
 
@@ -771,12 +905,13 @@ const ChartContainer = forwardRef(
     };
 
     useImperativeHandle(ref, () => ({
-      exportTo: (fileName, fileextension, includeLogo, data, pdfType) => {
+      exportTo: (fileName, fileextension, includeLogo, data, pdfType, options = {}) => {
         setExporting(true);
 
         selectNodeService.clearSelectedNodeInfo();
         const exportFilename = fileName || "OrgChart";
         const exportFileExtension = fileextension || "png";
+        const useCurrentView = Boolean(options?.useCurrentView);
 
         const originalScrollLeft = container.current.scrollLeft;
         container.current.scrollLeft = 0;
@@ -790,15 +925,19 @@ const ChartContainer = forwardRef(
           }
         }
 
-        const node = chart.current.querySelector("#paper");
+        const node = useCurrentView ? chart.current : chart.current.querySelector("#paper");
         const userView = {
           originalScrollLeft: originalScrollLeft,
           originalScrollTop: originalScrollTop,
           nodeBackground: node.style.background,
           nodeTransform: node.style.transform,
+          nodeOverflow: node.style.overflow,
         };
 
-        if (
+        if (useCurrentView) {
+          node.style.background = data?.document?.paperBackgroundColor || "#fff";
+          node.style.overflow = "hidden";
+        } else if (
           exportFileExtension === "svg" ||
           exportFileExtension === "pdf" ||
           exportFileExtension === "png"

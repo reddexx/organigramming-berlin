@@ -179,10 +179,14 @@ const App = () => {
     document.body.removeChild(link);
   };
 
-  const exportTo = (fileextension, includeLogo = true, pdfType = "") => {
+  const exportTo = (fileextension, includeLogo = true, pdfType = "", options = {}) => {
     const fileName = data.export.filename || toSnakeCase(data.document.title);
 
-    chart.current.exportTo(fileName, fileextension, includeLogo, data, pdfType);
+    chart.current.exportTo(fileName, fileextension, includeLogo, data, pdfType, options);
+  };
+
+  const saveCurrentViewAsPdf = () => {
+    exportTo("pdf", true, "", { useCurrentView: true });
   };
 
   useMount(() => {
@@ -336,13 +340,7 @@ const App = () => {
 
   const showLoginModal = () => setAuthModalShow(true);
 
-  const saveCurrentTemplate = () => {
-    const templateData = cloneData(data);
-    const payload = {
-      title: templateData?.document?.title || "Untitled",
-      data: templateData,
-    };
-
+  const persistTemplate = (payload) => {
     return fetch("/api/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -350,13 +348,37 @@ const App = () => {
     })
       .then((res) => res.json())
       .then((saved) => {
-        setTemplates((prev) => [saved, ...(prev || [])]);
+        setTemplates((prev) => {
+          const remaining = (prev || []).filter((template) => template.id !== saved.id);
+          return [saved, ...remaining];
+        });
         return saved;
       })
       .catch((e) => {
         console.error("save template failed", e);
         return null;
       });
+  };
+
+  const saveCurrentTemplate = () => {
+    const templateData = cloneData(data);
+    return persistTemplate({
+      title: templateData?.document?.title || "Untitled",
+      data: templateData,
+    });
+  };
+
+  const importTemplate = ({ title, data: templateData } = {}) => {
+    if (!templateData) {
+      return Promise.resolve(null);
+    }
+
+    const payload = {
+      title: title || templateData?.document?.title || "Untitled",
+      data: cloneData(templateData),
+    };
+
+    return persistTemplate(payload);
   };
 
   const publishCurrentChart = (options = {}) => {
@@ -666,6 +688,7 @@ const App = () => {
             setSelected={(e) => setSelected(e)}
             onExport={exportTo}
             onSave={onSave}
+            onSaveCurrentViewPdf={saveCurrentViewAsPdf}
             onUndo={setUndo}
             onRedo={setRedo}
             enableUndo={canUndo}
@@ -680,6 +703,7 @@ const App = () => {
             onRequestLogin={showLoginModal}
             onPublish={publishCurrentChart}
             onSaveTemplate={saveCurrentTemplate}
+            onImportTemplate={importTemplate}
             onCloneCurrentChart={cloneCurrentChart}
             sharedCharts={sharedCharts}
             templates={templates}

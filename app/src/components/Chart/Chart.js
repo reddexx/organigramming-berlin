@@ -23,12 +23,14 @@ const Chart = forwardRef(({ data, update, sendDataUp, setSelected, mode = "admin
   const isAdminMode = normalizedMode === "admin";
 
   useImperativeHandle(ref, () => ({
-    exportTo: (fileName, fileextension, includeLogo, vectorPdf) => {
+    exportTo: (fileName, fileextension, includeLogo, exportData, pdfType, options) => {
       orgchart.current.exportTo(
         fileName,
         fileextension,
         includeLogo,
-        vectorPdf
+        exportData,
+        pdfType,
+        options
       );
     },
     demoContexMenu: (enable, nodeId = "") => {

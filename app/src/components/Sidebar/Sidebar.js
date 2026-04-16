@@ -26,6 +26,7 @@ const Sidebar = forwardRef(
       setSelected,
       onExport,
       onSave,
+      onSaveCurrentViewPdf,
       onUndo,
       onRedo,
       enableUndo,
@@ -39,6 +40,7 @@ const Sidebar = forwardRef(
       onRequestLogin,
       onPublish,
       onSaveTemplate,
+      onImportTemplate,
       onCloneCurrentChart,
       sharedCharts = [],
       templates = [],
@@ -123,6 +125,8 @@ const Sidebar = forwardRef(
             sendDataUp={onChange}
             onExport={onExport}
             onSave={onSave}
+            onSaveCurrentViewPdf={onSaveCurrentViewPdf}
+            mode={mode}
             onHide={() => setExportModalShow(false)}
           />
         )}
@@ -133,6 +137,7 @@ const Sidebar = forwardRef(
             sendDataUp={onChange}
             onSave={onSave}
             templates={templates}
+            onImportTemplate={onImportTemplate}
             onDeleteTemplate={onDeleteTemplate}
             onHide={() => setSettingsModalShow(false)}
           />

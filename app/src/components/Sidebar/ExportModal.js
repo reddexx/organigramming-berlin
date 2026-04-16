@@ -15,6 +15,7 @@ const ExportModal = (props) => {
   const [showRDFInfo, setShowRDFInfo] = useState(false);
   const [warningMultiMainOrgs, setWarningMultiMainOrgs] = useState(false);
   const [duplicatePersons, setDuplicatePersons] = useState([]);
+  const isViewerMode = props.mode === "viewer";
 
   const properties = {
     properties: {
@@ -35,6 +36,8 @@ const ExportModal = (props) => {
       });
       if (mainCounter > 1) {
         setWarningMultiMainOrgs(true);
+      } else {
+        setWarningMultiMainOrgs(false);
       }
     }
 
@@ -51,8 +54,8 @@ const ExportModal = (props) => {
     //   setShowPDFInfo(false);
     // }
     if (
-      formData.export.exportType === "rdf" &&
-      formData.export.saveExport === "export"
+      formData?.export?.exportType === "rdf" &&
+      formData?.export?.saveExport === "export"
     ) {
       setShowRDFInfo(true);
     } else {
@@ -64,7 +67,20 @@ const ExportModal = (props) => {
         export: { ...formData.export, saveExport: "save" },
       });
     }
+      return;
+    }
+
+    if (isViewerMode && formData.export.saveExport !== "save") {
+      setFormData({
+        ...formData,
+        export: {
+          ...formData.export,
+          saveExport: "save",
+        },
+      });
+      return;
     if (!formData.export || !formData.export.filename) {
+
       setFormData({
         ...formData,
         export: {
@@ -75,7 +91,7 @@ const ExportModal = (props) => {
         },
       });
     }
-  }, [formData]);
+  }, [formData, isViewerMode]);
 
   const schema = { ...definitions, ...properties };
 
@@ -86,7 +102,7 @@ const ExportModal = (props) => {
       saveExport: {
         title:
           "Möchten Sie das Dokument speichern oder als Bild oder Dokument expotieren?",
-        "ui:widget": "radio",
+        "ui:widget": isViewerMode ? "hidden" : "radio",
       },
       baseUri: {
         "ui:placeholder": "https://berlin.github.io/lod-organigram/",
@@ -96,9 +112,8 @@ const ExportModal = (props) => {
 
   const onExport = () => {
     onBlur();
-    console.log("formData", formData);
     if (formData.export.saveExport === "save") {
-      props.onSave(true);
+      props.onSaveCurrentViewPdf();
     } else {
       switch (formData.export.exportType) {
         case "svg":
@@ -157,7 +172,6 @@ const ExportModal = (props) => {
               ObjectFieldTemplate={ObjectFieldTemplate}
               onChange={onChange}
               onBlur={onBlur}
-              liveValidate
               showErrorList={false}
             >
               {" "}

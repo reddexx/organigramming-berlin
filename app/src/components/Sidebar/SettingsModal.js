@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Button, Modal, Row, Col } from "react-bootstrap";
+import { Button, Modal, Row, Col, Alert, Form as BootstrapForm } from "react-bootstrap";
 import ObjectFieldTemplate from "../From/ObjectFieldTemplate";
-
-import { validationRules } from "../../validation/validationRules";
 
 import Form from "@rjsf/bootstrap-4";
 import { getDefinitions } from "../../services/getDefinitions";
@@ -12,24 +10,16 @@ import {
   sanitizeCustomFonts,
   getCustomFontFamilyFromSource,
 } from "../../services/customFonts";
+import { upgradeDataStructure } from "../../services/upgradeDataStructure";
+import { validateData } from "../../services/service";
 
 const SettingsModal = (props) => {
   const [formData, setFormData] = useState({ ...props.data });
-  const [warningMessages, setWarningMessages] = useState([]);
-
   const [initialFormData, setInitialFormData] = useState({});
+  const [templateImportError, setTemplateImportError] = useState(null);
+  const [templateImportSuccess, setTemplateImportSuccess] = useState("");
   const hasMounted = useRef(false);
 
-  function getErrorMsg(d) {
-    const validator = d?.settings?.validator;
-    if (!validator) return;
-    let rules = validationRules[validator];
-    let warningMessages = [];
-    for (const key in rules) {
-      warningMessages.push(rules[key].warning);
-    }
-    return warningMessages;
-  }
   const properties = {
     properties: {
       settings: {
@@ -41,8 +31,6 @@ const SettingsModal = (props) => {
 
   useEffect(() => {
     const nextFormData = { ...props.data };
-    const warningMessages = getErrorMsg(nextFormData);
-    setWarningMessages(warningMessages);
     setFormData(nextFormData);
 
     if (props.show || !hasMounted.current) {
@@ -58,12 +46,14 @@ const SettingsModal = (props) => {
     settings: {
       "ui:headless": true,
       "ui:order": [
-        "validator",
         "customFonts",
         "roleOptions",
         "departmentOptions",
         "additionalDesignationOptions",
       ],
+      validator: {
+        "ui:widget": "hidden",
+      },
       customFonts: {
         "ui:options": {
           orderable: false,
@@ -97,6 +87,7 @@ const SettingsModal = (props) => {
       ...nextFormData,
       settings: {
         ...(nextFormData.settings || {}),
+        validator: "",
         customFonts: sanitizeCustomFonts(nextFormData?.settings?.customFonts),
       },
     });
@@ -122,13 +113,53 @@ const SettingsModal = (props) => {
       ...e.formData,
       settings: {
         ...nextSettings,
+        validator: "",
         customFonts: nextCustomFonts,
       },
     };
-    const warningMessages = getErrorMsg(nextFormData);
-    setWarningMessages(warningMessages);
-
     setFormData(nextFormData);
+  };
+
+  const handleTemplateImportChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setTemplateImportError(null);
+    setTemplateImportSuccess("");
+
+    const reader = new FileReader();
+    reader.onload = async (loadEvent) => {
+      try {
+        const rawText = String(loadEvent.target?.result || "");
+        const parsedData = upgradeDataStructure(JSON.parse(rawText));
+        const [valid, errors] = validateData(parsedData);
+
+        if (!valid) {
+          setTemplateImportError((errors || []).map((error) => JSON.stringify(error, null, 2)));
+          return;
+        }
+
+        const importedTemplate = await props.onImportTemplate?.({
+          title: parsedData?.document?.title || file.name.replace(/\.json$/i, ""),
+          data: parsedData,
+        });
+
+        if (!importedTemplate) {
+          setTemplateImportError(["Das Template konnte nicht importiert werden."]);
+          return;
+        }
+
+        setTemplateImportSuccess(`Template "${importedTemplate.title}" wurde importiert.`);
+      } catch (error) {
+        setTemplateImportError([error?.message || "Ungültige JSON-Datei."]);
+      }
+    };
+
+    reader.readAsText(file);
   };
 
   const resetSetting = () => {
@@ -153,19 +184,31 @@ const SettingsModal = (props) => {
               ObjectFieldTemplate={ObjectFieldTemplate}
               ArrayFieldTemplate={ArrayFieldTemplate}
               onChange={onChange}
-              liveValidate
               showErrorList={false}
             >
               {" "}
             </Form>
             <p>
-              Hier können Sie Validierung sowie Vorschlagslisten für Rollen,
-              Abteilungen, Zusatzbezeichnungen und importierte Schriftarten
-              verwalten.
+              Hier können Sie Vorschlagslisten für Rollen, Abteilungen,
+              Zusatzbezeichnungen und importierte Schriftarten verwalten.
             </p>
             <div className="mt-4">
               <h5>Gespeicherte Templates</h5>
-              <p>Hier können Sie benutzerdefinierte Templates entfernen.</p>
+              <p>Hier können Sie benutzerdefinierte Templates importieren oder entfernen.</p>
+              <BootstrapForm.Group className="mb-3">
+                <BootstrapForm.Label>Exportierte JSON als Template importieren</BootstrapForm.Label>
+                <BootstrapForm.Control type="file" accept=".json" onChange={handleTemplateImportChange} />
+              </BootstrapForm.Group>
+              {templateImportSuccess && <Alert variant="success">{templateImportSuccess}</Alert>}
+              {templateImportError && (
+                <Alert variant="danger">
+                  {templateImportError.map((errorMessage, index) => (
+                    <pre key={`template-import-error-${index}`} className="mb-0 mt-2">
+                      {errorMessage}
+                    </pre>
+                  ))}
+                </Alert>
+              )}
               {(props.templates || []).length === 0 ? (
                 <p className="text-muted mb-0">Keine gespeicherten Templates vorhanden.</p>
               ) : (
@@ -203,17 +246,6 @@ const SettingsModal = (props) => {
                 </div>
               )}
             </div>
-            {warningMessages && warningMessages?.length !== 0 && (
-              <>
-                <p>Für die ausgewählte Validirung gelten folgende Regeln:</p>
-                <ul>
-                  {warningMessages &&
-                    warningMessages.map((errorMsg, i) => (
-                      <li key={"warningkey-" + i}>{errorMsg}</li>
-                    ))}
-                </ul>
-              </>
-            )}
           </Col>
         </Row>
       </Modal.Body>
